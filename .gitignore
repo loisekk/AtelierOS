@@ -1,0 +1,37 @@
+# Node.js
+node_modules/
+dist/
+build/
+.vite/
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+env/
+
+# Environment & Secrets
+.env
+.env.local
+.env.*
+secrets.json
+
+# OS / Editor
+.DS_Store
+.idea/
+.vscode/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Docker volumes / data
+/data/
+volumes/
+redis_data/
+neo4j_data/
+qdrant_data/
+
+# Browser test snapshots
+.playwright-mcp/
