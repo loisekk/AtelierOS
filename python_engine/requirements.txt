@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+langgraph
+langchain-core
+pydantic
+websockets
+redis
+qdrant-client
+neo4j
+docker
