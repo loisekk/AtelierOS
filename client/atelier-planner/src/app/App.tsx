@@ -12,9 +12,10 @@ import { LeftPanel } from '../features/workspace/components/LeftPanel';
 import { RightPanel } from '../features/workspace/components/RightPanel';
 import { AgentModal } from '../features/workspace/components/AgentModal';
 import { DispatchModal } from '../features/workspace/components/DispatchModal';
+import { BOUNDS } from '../features/canvas/architecture/SpatialConfig';
 import type { AgentStatus, AgentConfig, Task } from '../features/ai-agents/types';
 
-const ROOM_AREA = 1800; // 60x30
+const ROOM_AREA = 1800;
 const MAX_CAPACITY = 100;
 const BRAND_SWATCHES = ['#C75D3F', '#1F3A5F', '#6B8E4E', '#D49B3B', '#2A2826'];
 
@@ -26,7 +27,6 @@ const HELP_SHORTCUTS = [
   { keys: 'Esc', desc: 'Cancel / close panels' },
 ];
 
-// NEW: Interface to prevent 'any' warnings
 interface DagStep {
   role: string;
   status: string;
@@ -36,8 +36,6 @@ function App() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { engineRef, placedItems, selectedId } = useAtelier(containerRef);
   const toastTimer = useRef<number | null>(null);
-  
-  // FIX: Use useRef instead of useState because the value is only passed to the 3D engine, not rendered in React
   const dagStepsRef = useRef<DagStep[]>([]);
 
   const [view, setView] = useState<'office' | 'ceo' | 'command' | 'knowledge' | 'top'>('office');
@@ -50,21 +48,32 @@ function App() {
   const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isCustomizing, setIsCustomizing] = useState(false);
-  
+
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [hiringType, setHiringType] = useState<string | null>(null);
 
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [logs, setLogs] = useState<Record<string, string[]>>({});
-  
-  // HITL State
-  const [approvalData, setApprovalData] = useState<{ taskId: string, command: string, subTaskId: string } | null>(null);
+
+  const [approvalData, setApprovalData] = useState<{ taskId: string; command: string; subTaskId: string } | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 2200);
+  }, []);
+
+  const handleDispatch = useCallback((taskData: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
+    const newTask: Task = {
+      ...taskData,
+      id: Math.random().toString(36).slice(2, 11),
+      status: 'running',
+      createdAt: Date.now()
+    };
+    setTasks(prev => [...prev, newTask]);
+    sendMessage({ type: 'dispatch', task_id: newTask.id, assignee_ids: newTask.assigneeIds, prompt: newTask.prompt });
+    showToast(`Task dispatched to Python Engine!`);
   }, []);
 
   const handleGatewayMessage = useCallback((msg: GatewayMessage) => {
@@ -93,8 +102,7 @@ function App() {
       showToast(`⚠️ Approval Required for destructive command!`);
     } else if (msg.type === 'cognitive_step') {
       const logMessage = `[${msg.role || 'CEO Brain'}] ${msg.message} (${msg.status})`;
-      
-      // Update 3D DAG Screen using Ref
+
       const newSteps = [...dagStepsRef.current];
       const existing = newSteps.findIndex(s => s.role === (msg.role || 'Decompose'));
       if (existing > -1) {
@@ -129,7 +137,6 @@ function App() {
       showToast(logMessage);
     } else if (msg.type === 'cognitive_complete') {
       setTasks(prev => prev.map(t => t.id === msg.task_id ? { ...t, status: 'completed' } : t));
-      // Clear DAG after completion
       setTimeout(() => {
         dagStepsRef.current = [];
         engineRef.current?.updateDAG([]);
@@ -149,16 +156,9 @@ function App() {
     } else {
       showToast('Hire an employee first!');
     }
-  }, [placedItems]);
+  }, [placedItems, handleDispatch]);
 
-  const { isListening, startListening, stopListening, getAudioData } = useVoice(handleTranscript);
-
-  useEffect(() => {
-    let raf: number;
-    const loop = () => { raf = requestAnimationFrame(loop); };
-    loop();
-    return () => cancelAnimationFrame(raf);
-  }, [isListening, getAudioData, engineRef]);
+  const { isListening, startListening, stopListening } = useVoice(handleTranscript);
 
   const toggleListening = () => {
     if (isListening) stopListening();
@@ -231,18 +231,6 @@ function App() {
     showToast(`${config.name} updated.`);
   };
 
-  const handleDispatch = (taskData: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Math.random().toString(36).substr(2, 9),
-      status: 'running',
-      createdAt: Date.now()
-    };
-    setTasks(prev => [...prev, newTask]);
-    sendMessage({ type: 'dispatch', task_id: newTask.id, assignee_ids: newTask.assigneeIds, prompt: newTask.prompt });
-    showToast(`Task dispatched to Python Engine!`);
-  };
-
   const handleStartMeeting = () => {
     const ids = employees.map(e => e.id);
     if (ids.length === 0) {
@@ -285,13 +273,16 @@ function App() {
     doc.text(`Generated ${new Date().toLocaleString()}`, 14, 25); doc.setTextColor(0);
     doc.setDrawColor(0); doc.setLineWidth(0.4); doc.line(14, 29, 196, 29);
 
-    const scale = 150 / 60;
+    // BOUNDS-aware PDF export
+    const spanX = BOUNDS.maxX - BOUNDS.minX;
+    const spanZ = BOUNDS.maxZ - BOUNDS.minZ;
+    const scale = 150 / spanX;
     const ox = 14, oy = 42;
-    doc.setLineWidth(0.8); doc.rect(ox, oy, 60 * scale, 30 * scale);
+    doc.setLineWidth(0.8); doc.rect(ox, oy, spanX * scale, spanZ * scale);
     doc.setDrawColor(199, 93, 63); doc.setLineWidth(0.4);
     placedItems.forEach(item => {
-      const cx = ox + (item.position.x - -15) * scale;
-      const cy = oy + (item.position.z + 15) * scale;
+      const cx = ox + (item.position.x - BOUNDS.minX) * scale;
+      const cy = oy + (item.position.z - BOUNDS.minZ) * scale;
       const dim = ITEM_CATALOG[item.type]?.dim ?? [0.6, 0.6];
       const w = dim[0] * scale, h = dim[1] * scale;
       if (item.type === 'chair' || item.type === 'stool') doc.circle(cx, cy, 2.2);

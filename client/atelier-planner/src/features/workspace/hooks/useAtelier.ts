@@ -25,5 +25,10 @@ export const useAtelier = (containerRef: RefObject<HTMLDivElement | null>) => {
     };
   }, [containerRef]);
 
-  return { engineRef, placedItems, selectedId };
+  return { 
+    engineRef, 
+    placedItems, 
+    selectedId,
+    releaseWorkstation: (id: string) => engineRef.current?.releaseWorkstation(id) // <-- NEW METHOD
+  };
 };
