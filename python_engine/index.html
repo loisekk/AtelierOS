@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AKATSUKI — Premium Anime Universe</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='42' fill='%23ff3352'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Zen+Tokyo+One&family=Bebas+Neue&family=Chakra+Petch:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@500;700;900&display=swap" rel="stylesheet">
+<style>
+/* ============ CORE ============ */
+:root{
+  --ink:#0a0c16; --ink2:#0f1220; --panel:#151929; --panel2:#1a1f33;
+  --line:#252b45; --paper:#f4efe4; --muted:#8b93b5;
+  --red:#ff3352; --red-deep:#c1122f; --gold:#ffc145; --teal:#3ee6cf; --pink:#ffa3bd;
+  --disp:'Zen Tokyo One',cursive; --head:'Bebas Neue',sans-serif;
+  --body:'Chakra Petch',sans-serif; --jp:'Noto Sans JP',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+::selection{background:var(--red);color:#fff}
+body{
+  font-family:var(--body);background:var(--ink);color:var(--paper);
+  overflow-x:hidden;line-height:1.6;font-weight:300;
+  background-image:radial-gradient(rgba(255,255,255,.028) 1px,transparent 1.4px);
+  background-size:26px 26px;
+}
+body::-webkit-scrollbar{width:10px}
+body::-webkit-scrollbar-track{background:var(--ink2)}
+body::-webkit-scrollbar-thumb{background:var(--red-deep);border-radius:5px}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+img{max-width:100%}
+.wrap{max-width:1340px;margin:0 auto;padding:0 6vw}
+
+/* ============ CURSOR ============ */
+.cursor,.cursor-ring{position:fixed;top:0;left:0;pointer-events:none;z-index:9999;border-radius:50%;mix-blend-mode:difference}
+.cursor{width:8px;height:8px;background:#fff;transform:translate(-50%,-50%)}
+.cursor-ring{width:38px;height:38px;border:1.5px solid #fff;transform:translate(-50%,-50%);transition:width .25s,height .25s,opacity .25s}
+body.cur-big .cursor-ring{width:64px;height:64px;opacity:.7}
+@media(pointer:coarse){.cursor,.cursor-ring{display:none}}
+
+/* ============ PROGRESS / LOADER ============ */
+#progress{position:fixed;top:0;left:0;height:3px;width:0;background:linear-gradient(90deg,var(--red-deep),var(--red),var(--gold));z-index:10001;box-shadow:0 0 12px var(--red)}
+#loader{position:fixed;inset:0;background:var(--ink);z-index:10000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;transition:transform .8s cubic-bezier(.76,0,.24,1);overflow:hidden}
+#loader.done{transform:translateY(-101%)}
+#loader .burst{position:absolute;inset:-40%;background:repeating-conic-gradient(rgba(255,51,82,.06) 0 1.5deg,transparent 1.5deg 9deg);animation:spin 14s linear infinite;mask:radial-gradient(circle,#000 0%,transparent 62%)}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loader .kanji{font-family:var(--jp);font-weight:900;font-size:clamp(5rem,14vw,9rem);color:var(--red);position:relative;text-shadow:0 0 40px rgba(255,51,82,.55);animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.07);text-shadow:0 0 70px rgba(255,51,82,.9)}}
+#loader .lname{font-family:var(--head);letter-spacing:.55em;font-size:1.1rem;color:var(--paper);position:relative}
+#loader .lbar{width:min(300px,60vw);height:2px;background:var(--line);position:relative;overflow:hidden}
+#loader .lbar i{position:absolute;inset:0;width:0;background:var(--red)}
+#loader .lpct{font-family:var(--head);font-size:.9rem;letter-spacing:.3em;color:var(--muted)}
+
+/* ============ NAV ============ */
+nav{position:fixed;top:0;left:0;right:0;z-index:900;display:flex;align-items:center;justify-content:space-between;padding:16px 4vw;transition:.4s}
+nav.scrolled{background:rgba(10,12,22,.88);backdrop-filter:blur(14px);border-bottom:1px solid var(--line);padding:10px 4vw}
+.logo{display:flex;align-items:center;gap:12px}
+.logo .sun{width:38px;height:38px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff6b81,var(--red) 55%,var(--red-deep));display:grid;place-items:center;font-family:var(--jp);font-weight:900;color:#fff;font-size:1.05rem;box-shadow:0 0 22px rgba(255,51,82,.55);animation:sunpulse 3.4s ease-in-out infinite}
+@keyframes sunpulse{50%{box-shadow:0 0 40px rgba(255,51,82,.85)}}
+.logo b{font-family:var(--head);font-size:1.55rem;letter-spacing:.14em;display:block;line-height:1}
+.logo small{display:block;font-family:var(--jp);font-size:.6rem;color:var(--red);letter-spacing:.5em;font-weight:700}
+.nav-links{display:flex;gap:34px;font-size:.78rem;font-weight:600;letter-spacing:.18em;text-transform:uppercase}
+.nav-links a{position:relative;padding:4px 0;color:var(--muted);transition:.3s}
+.nav-links a:hover{color:var(--paper)}
+.nav-links a::after{content:'';position:absolute;left:0;bottom:-2px;width:0;height:2px;background:var(--red);transition:.3s;transform:skewX(-20deg)}
+.nav-links a:hover::after{width:100%}
+.nav-cta{display:flex;align-items:center;gap:16px}
+.btn{display:inline-block;transform:skewX(-10deg);padding:12px 26px;font-family:var(--head);font-size:1.05rem;letter-spacing:.14em;position:relative;overflow:hidden;transition:.3s;border:1px solid transparent}
+.btn span{display:inline-block;transform:skewX(10deg)}
+.btn-red{background:var(--red);color:#fff;box-shadow:4px 4px 0 var(--red-deep)}
+.btn-red:hover{transform:skewX(-10deg) translate(-2px,-2px);box-shadow:7px 7px 0 var(--red-deep),0 0 30px rgba(255,51,82,.45)}
+.btn-ghost{border-color:var(--line);color:var(--paper)}
+.btn-ghost:hover{border-color:var(--red);color:var(--red);background:rgba(255,51,82,.07)}
+.burger{display:none;flex-direction:column;gap:5px;padding:8px;z-index:960}
+.burger i{width:26px;height:2px;background:var(--paper);transition:.35s;display:block}
+body.menu-open .burger i:nth-child(1){transform:translateY(7px) rotate(45deg)}
+body.menu-open .burger i:nth-child(2){opacity:0}
+body.menu-open .burger i:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.mnav{position:fixed;inset:0;background:var(--ink2);z-index:950;display:flex;flex-direction:column;justify-content:center;padding:0 8vw;clip-path:circle(0 at calc(100% - 46px) 40px);transition:clip-path .65s cubic-bezier(.76,0,.24,1)}
+body.menu-open .mnav{clip-path:circle(150% at calc(100% - 46px) 40px)}
+.mnav::before{content:'暁';position:absolute;right:-4%;bottom:-8%;font-family:var(--jp);font-weight:900;font-size:44vw;color:transparent;-webkit-text-stroke:1px var(--line);opacity:.5;pointer-events:none}
+.mnav a{font-family:var(--head);font-size:clamp(2.6rem,8vw,4.6rem);letter-spacing:.06em;line-height:1.25;color:var(--paper);display:flex;align-items:baseline;gap:18px;transition:.3s}
+.mnav a small{font-family:var(--body);font-size:.8rem;color:var(--red);letter-spacing:.3em}
+.mnav a:hover{color:var(--red);transform:translateX(14px)}
+
+/* ============ HERO ============ */
+#hero{position:relative;min-height:100svh;display:flex;align-items:center;overflow:hidden}
+#hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 55% at 50% 42%,rgba(255,51,82,.14),transparent 65%);pointer-events:none;z-index:1}
+#bg3d{position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.hero-ui{position:relative;z-index:2;width:100%;padding:120px 6vw 130px;pointer-events:none}
+.hero-ui a,.hero-ui button{pointer-events:auto}
+.kick{display:inline-flex;align-items:center;gap:12px;font-size:.72rem;font-weight:700;letter-spacing:.4em;color:var(--gold);text-transform:uppercase;border:1px solid rgba(255,193,69,.35);padding:8px 18px;transform:skewX(-10deg);background:rgba(10,12,22,.5)}
+.kick i{width:8px;height:8px;background:var(--red);animation:blink 1.2s steps(2) infinite}
+@keyframes blink{50%{opacity:.15}}
+h1{margin-top:26px;text-transform:uppercase}
+.mask{display:block;overflow:hidden}
+.mask>*{display:inline-block;transform:translateY(115%);transition:transform 1s cubic-bezier(.22,1,.36,1)}
+body.loaded .mask>*{transform:translateY(0)}
+.h-l1{font-weight:700;font-size:clamp(1rem,2.4vw,1.5rem);letter-spacing:.55em;color:var(--muted)}
+.h-mega{font-family:var(--disp);font-size:clamp(4.2rem,13.5vw,11rem);line-height:.95;color:transparent;-webkit-text-stroke:2.5px var(--paper);position:relative;font-weight:400}
+.h-mega::after{content:attr(data-t);position:absolute;left:7px;top:7px;color:var(--red);-webkit-text-stroke:2.5px var(--red);z-index:-1;opacity:.85}
+.h-l3{font-family:var(--head);font-size:clamp(2.6rem,7.5vw,6rem);letter-spacing:.08em;color:var(--red);text-shadow:0 0 34px rgba(255,51,82,.4)}
+.hero-sub{max-width:480px;margin-top:24px;color:var(--muted);font-size:1rem;font-weight:400}
+.hero-sub b{color:var(--paper);font-weight:600}
+.hero-ctas{display:flex;gap:18px;margin-top:36px;flex-wrap:wrap}
+.hero-meta{display:flex;gap:22px;margin-top:42px;font-family:var(--head);letter-spacing:.22em;font-size:.95rem;color:var(--muted);flex-wrap:wrap}
+.hero-meta li{list-style:none;display:flex;align-items:center;gap:8px}
+.hero-meta li::before{content:'';width:14px;height:2px;background:var(--red)}
+.vtext{position:absolute;right:3.2vw;top:50%;transform:translateY(-50%);writing-mode:vertical-rl;font-family:var(--jp);font-weight:700;letter-spacing:.55em;font-size:.85rem;color:var(--muted);z-index:2;border-left:1px solid var(--line);padding-left:16px}
+.vtext b{color:var(--red)}
+.badge-spin{position:absolute;right:6vw;bottom:130px;width:118px;height:118px;z-index:2;pointer-events:auto}
+.badge-spin svg{width:100%;height:100%;animation:spin 16s linear infinite}
+.badge-spin text{font-family:var(--body);font-size:9.5px;letter-spacing:.32em;fill:var(--muted);font-weight:600}
+.badge-spin .core{position:absolute;inset:0;display:grid;place-items:center;font-size:1.3rem;color:var(--red)}
+.scroll-cue{position:absolute;left:6vw;bottom:112px;z-index:2;display:flex;align-items:center;gap:12px;font-size:.65rem;letter-spacing:.4em;color:var(--muted);text-transform:uppercase}
+.scroll-cue i{width:52px;height:1px;background:var(--line);position:relative;overflow:hidden;display:block}
+.scroll-cue i::after{content:'';position:absolute;inset:0;background:var(--red);animation:slide 1.8s ease-in-out infinite}
+@keyframes slide{0%{transform:translateX(-100%)}60%,100%{transform:translateX(100%)}}
+
+/* ============ TICKER ============ */
+.ticker{background:var(--red);color:var(--ink);transform:rotate(-1.3deg) scale(1.02);border-block:3px solid var(--ink);position:relative;z-index:3;overflow:hidden;margin:-28px 0 0}
+.ticker-track{display:flex;width:max-content;animation:marquee 26s linear infinite;padding:12px 0}
+.ticker:hover .ticker-track{animation-play-state:paused}
+.ticker-track span{font-family:var(--head);font-size:1.35rem;letter-spacing:.14em;white-space:nowrap;padding:0 22px;display:flex;align-items:center;gap:22px}
+.ticker-track span::after{content:'✦';font-size:.9rem}
+@keyframes marquee{to{transform:translateX(-50%)}}
+
+/* ============ SECTION HEADERS ============ */
+section{position:relative;z-index:2}
+.sblock{padding:110px 0 40px}
+.shead{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;margin-bottom:48px;flex-wrap:wrap}
+.shead .jp{font-family:var(--jp);font-weight:700;color:var(--red);font-size:.8rem;letter-spacing:.4em;display:flex;align-items:center;gap:10px}
+.shead .jp::before{content:'';width:26px;height:12px;background:var(--red);transform:skewX(-24deg)}
+.shead h2{font-family:var(--head);font-size:clamp(2.6rem,5.5vw,4.2rem);letter-spacing:.05em;line-height:1;margin-top:10px}
+.shead h2 em{font-style:normal;color:transparent;-webkit-text-stroke:1.5px var(--red)}
+.sdesc{max-width:380px;color:var(--muted);font-size:.92rem}
+
+/* ============ CHIPS + CARDS ============ */
+.chips{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:34px}
+.chip{padding:8px 20px;border:1px solid var(--line);font-size:.72rem;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);transform:skewX(-10deg);transition:.3s}
+.chip span{display:inline-block;transform:skewX(10deg)}
+.chip:hover{border-color:var(--red);color:var(--paper)}
+.chip.active{background:var(--red);border-color:var(--red);color:#fff;box-shadow:0 0 18px rgba(255,51,82,.4)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:26px;padding-bottom:70px}
+.acard{position:relative;background:linear-gradient(165deg,var(--panel),var(--ink2));border:1px solid var(--line);border-radius:10px;overflow:hidden;transform-style:preserve-3d;transition:transform .18s ease-out,box-shadow .3s;will-change:transform;animation:popin .5s cubic-bezier(.22,1,.36,1)}
+@keyframes popin{from{opacity:0;transform:scale(.92) translateY(16px)}}
+.acard.hide{display:none}
+.acard:hover{box-shadow:0 24px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,51,82,.35)}
+.acard.off{opacity:0;transform:scale(.9)}
+.poster{aspect-ratio:3/4;position:relative;overflow:hidden;display:grid;place-items:center;background:linear-gradient(160deg,var(--pa),var(--pb))}
+.poster::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.13) 1px,transparent 1.8px);background-size:13px 13px;mix-blend-mode:overlay}
+.poster::after{content:'';position:absolute;inset:0;background:repeating-conic-gradient(from 0deg at 50% 50%,rgba(255,255,255,.05) 0 1deg,transparent 1deg 8deg);mask:radial-gradient(circle,transparent 28%,#000 72%);opacity:0;transition:.4s}
+.acard:hover .poster::after{opacity:1;animation:spin 9s linear infinite}
+.poster .kj{font-family:var(--jp);font-weight:900;font-size:clamp(5.5rem,9vw,8rem);color:var(--pc,#f4efe4);text-shadow:6px 6px 0 rgba(0,0,0,.4);transform:translateZ(50px);transition:.4s;line-height:1}
+.acard:hover .poster .kj{transform:translateZ(50px) scale(1.12) rotate(-4deg);text-shadow:9px 9px 0 rgba(0,0,0,.45),0 0 34px var(--gl,var(--red))}
+.poster .strip{position:absolute;top:12px;right:12px;writing-mode:vertical-rl;font-family:var(--jp);font-size:.62rem;letter-spacing:.4em;font-weight:700;color:rgba(255,255,255,.8);border-right:2px solid var(--pc,#f4efe4);padding-right:6px}
+.poster .play{position:absolute;inset:0;display:grid;place-items:center;opacity:0;transition:.35s;background:rgba(10,12,22,.35)}
+.acard:hover .play{opacity:1}
+.play b{width:64px;height:64px;border-radius:50%;background:var(--red);display:grid;place-items:center;font-size:1.15rem;color:#fff;transform:scale(.5);transition:.35s cubic-bezier(.34,1.56,.64,1);box-shadow:0 0 0 8px rgba(255,51,82,.25),0 0 34px rgba(255,51,82,.6)}
+.acard:hover .play b{transform:scale(1)}
+.rank{position:absolute;top:-6px;left:10px;font-family:var(--head);font-size:3.4rem;color:transparent;-webkit-text-stroke:1.5px var(--red);z-index:3;text-shadow:none;line-height:1;filter:drop-shadow(3px 3px 0 rgba(0,0,0,.6))}
+.glare{position:absolute;inset:0;background:radial-gradient(420px circle at var(--gx,50%) var(--gy,50%),rgba(255,255,255,.16),transparent 55%);opacity:0;transition:opacity .3s;pointer-events:none;z-index:4}
+.acard:hover .glare{opacity:1}
+.cbody{padding:18px 18px 20px}
+.cbody h3{font-family:var(--head);font-size:1.4rem;letter-spacing:.08em;line-height:1.1}
+.cbody .jp-t{font-family:var(--jp);font-size:.68rem;color:var(--red);letter-spacing:.28em;font-weight:700}
+.cmeta{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:.74rem;color:var(--muted)}
+.cmeta .rate{color:var(--gold);font-weight:700;letter-spacing:.06em}
+.ctags{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.ctags i{font-style:normal;font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;border:1px solid var(--line);padding:3px 9px;color:var(--muted)}
+
+/* ============ CAROUSEL 3D ============ */
+#spotlight{background:linear-gradient(180deg,transparent,rgba(193,18,47,.06) 30%,transparent);padding-bottom:70px}
+.stage{height:460px;perspective:1400px;position:relative;touch-action:pan-y;cursor:grab}
+.stage:active{cursor:grabbing}
+.slide{position:absolute;left:50%;top:50%;width:min(250px,62vw);transition:transform .6s cubic-bezier(.22,1,.36,1),opacity .5s;transform-style:preserve-3d}
+.slide .poster{border-radius:10px;border:1px solid var(--line);box-shadow:0 22px 44px rgba(0,0,0,.5)}
+.slide.active .poster{border-color:var(--red);box-shadow:0 26px 60px rgba(0,0,0,.65),0 0 36px rgba(255,51,82,.28)}
+.slide.active .poster .kj{transform:translateZ(40px)}
+.stage-ui{display:flex;justify-content:space-between;align-items:center;gap:26px;margin-top:26px;flex-wrap:wrap}
+.sp-info{max-width:520px;min-height:120px}
+.sp-info .jp-t{font-family:var(--jp);color:var(--red);font-size:.72rem;letter-spacing:.34em;font-weight:700}
+.sp-info h3{font-family:var(--head);font-size:clamp(1.9rem,4vw,2.9rem);letter-spacing:.06em;line-height:1;margin:6px 0 10px}
+.sp-info p{color:var(--muted);font-size:.92rem;transition:.3s}
+.sp-info .sptags{margin-top:12px;display:flex;gap:8px;align-items:center;font-size:.72rem;letter-spacing:.18em;color:var(--gold);text-transform:uppercase}
+.sp-ctrl{display:flex;align-items:center;gap:16px}
+.sp-btn{width:54px;height:54px;border:1px solid var(--line);display:grid;place-items:center;font-size:1.2rem;transition:.3s;transform:skewX(-8deg);color:var(--paper)}
+.sp-btn:hover{background:var(--red);border-color:var(--red);box-shadow:0 0 22px rgba(255,51,82,.5)}
+.dots{display:flex;gap:8px}
+.dots i{width:22px;height:3px;background:var(--line);cursor:pointer;transition:.3s;display:block}
+.dots i.on{background:var(--red);width:38px;box-shadow:0 0 10px rgba(255,51,82,.6)}
+
+/* ============ CHARACTERS ============ */
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:26px;padding-bottom:80px}
+.fcard{perspective:1200px;height:390px}
+.finner{position:relative;width:100%;height:100%;transform-style:preserve-3d;transition:transform .8s cubic-bezier(.35,.1,.25,1)}
+.fcard:hover .finner,.fcard.flipped .finner{transform:rotateY(180deg)}
+.fface{position:absolute;inset:0;backface-visibility:hidden;border-radius:12px;border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.ffront{background:linear-gradient(170deg,var(--ca),var(--cb))}
+.ffront::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(255,255,255,.12) 1px,transparent 1.8px);background-size:14px 14px}
+.ffront .ring{width:150px;height:150px;border-radius:50%;border:2px dashed rgba(255,255,255,.4);display:grid;place-items:center;position:relative;animation:spin 22s linear infinite}
+.ffront .ring b{font-family:var(--jp);font-weight:900;font-size:4.4rem;color:#fff;text-shadow:4px 4px 0 rgba(0,0,0,.35);animation:spin 22s linear infinite reverse}
+.ffront h4{font-family:var(--head);font-size:1.7rem;letter-spacing:.12em;color:#fff;position:relative}
+.ffront small{font-family:var(--jp);font-size:.7rem;letter-spacing:.4em;color:rgba(255,255,255,.85);font-weight:700;position:relative}
+.ffront .hint{position:absolute;bottom:14px;font-size:.6rem;letter-spacing:.3em;color:rgba(255,255,255,.6);text-transform:uppercase}
+.fback{background:var(--panel);transform:rotateY(180deg);padding:28px;justify-content:flex-start}
+.fback .q{font-size:.95rem;font-weight:400;font-style:italic;color:var(--paper);line-height:1.55;border-left:3px solid var(--red);padding-left:14px;margin:14px 0 22px}
+.fback h5{font-family:var(--head);letter-spacing:.14em;font-size:1.15rem;color:var(--red)}
+.stat{margin-bottom:13px}
+.stat span{display:flex;justify-content:space-between;font-size:.66rem;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.stat .bar{height:5px;background:var(--ink2);overflow:hidden}
+.stat .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--red-deep),var(--red));transition:width 1s cubic-bezier(.22,1,.36,1) .25s}
+.fcard:hover .bar i,.fcard.flipped .bar i{width:var(--v)}
+
+/* ============ SCHEDULE ============ */
+.sched{border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-bottom:80px;background:var(--ink2)}
+.srow{display:grid;grid-template-columns:110px 1fr auto auto auto;gap:18px;align-items:center;padding:18px 26px;border-bottom:1px solid var(--line);transition:.3s;position:relative}
+.srow:last-child{border-bottom:none}
+.srow:hover{background:var(--panel);transform:translateX(8px)}
+.srow::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--red);transform:scaleY(0);transition:.3s}
+.srow:hover::before,.srow.today::before{transform:scaleY(1)}
+.srow .day{font-family:var(--head);font-size:1.3rem;letter-spacing:.18em;color:var(--muted)}
+.srow .st{font-weight:600;font-size:.98rem}
+.srow .st small{display:block;font-family:var(--jp);font-size:.64rem;color:var(--red);letter-spacing:.26em;font-weight:700}
+.srow .ep{font-family:var(--head);letter-spacing:.12em;color:var(--gold)}
+.srow .time{font-size:.8rem;color:var(--muted);letter-spacing:.1em}
+.badge{font-size:.6rem;letter-spacing:.22em;padding:5px 12px;font-weight:700;transform:skewX(-10deg)}
+.badge.sub{background:rgba(62,230,207,.12);color:var(--teal);border:1px solid rgba(62,230,207,.4)}
+.badge.dub{background:rgba(255,193,69,.1);color:var(--gold);border:1px solid rgba(255,193,69,.4)}
+.srow.today{background:rgba(255,51,82,.07)}
+.srow.today .day{color:var(--red)}
+.live{display:inline-flex;align-items:center;gap:7px;font-size:.62rem;letter-spacing:.24em;color:var(--red);font-weight:700;margin-left:12px}
+.live i{width:7px;height:7px;border-radius:50%;background:var(--red);animation:blink 1s steps(2) infinite}
+
+/* ============ STATS BAND ============ */
+#stats{background:var(--red);color:var(--ink);clip-path:polygon(0 4%,100% 0,100% 96%,0 100%);padding:90px 0;margin:30px 0;position:relative;z-index:3}
+#stats::before{content:'';position:absolute;inset:0;background-image:radial-gradient(circle at 1px 1px,rgba(0,0,0,.18) 1.2px,transparent 2px);background-size:16px 16px}
+.stats-in{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:30px;position:relative}
+.stat-b{text-align:left;border-left:3px solid var(--ink);padding-left:22px}
+.stat-b b{font-family:var(--head);font-size:clamp(2.8rem,5.5vw,4.4rem);line-height:1;display:block}
+.stat-b span{font-size:.72rem;letter-spacing:.32em;text-transform:uppercase;font-weight:700}
+
+/* ============ JOIN ============ */
+.join{display:grid;grid-template-columns:1.1fr 1fr;border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:110px;background:var(--panel)}
+.join-l{padding:60px 54px;border-left:6px solid var(--red);position:relative}
+.join-l::after{content:'入隊';position:absolute;right:-14px;bottom:-38px;font-family:var(--jp);font-weight:900;font-size:9rem;color:transparent;-webkit-text-stroke:1px var(--line);pointer-events:none}
+.join-l h2{font-family:var(--head);font-size:clamp(2.2rem,4.4vw,3.4rem);letter-spacing:.06em;line-height:1.05}
+.join-l h2 em{font-style:normal;color:var(--red)}
+.join-l p{color:var(--muted);margin-top:14px;max-width:400px;font-size:.94rem}
+.join-r{background:var(--ink2);padding:60px 54px;display:flex;flex-direction:column;justify-content:center;gap:20px}
+.join-r label{font-size:.68rem;letter-spacing:.34em;color:var(--gold);text-transform:uppercase;font-weight:700}
+.join-r input{background:transparent;border:none;border-bottom:2px solid var(--line);padding:12px 2px;color:var(--paper);font-family:var(--body);font-size:1.05rem;outline:none;transition:.3s}
+.join-r input:focus{border-color:var(--red);box-shadow:0 12px 24px -18px var(--red)}
+.join-ok{color:var(--teal);font-weight:600;letter-spacing:.06em;display:none;animation:popin .5s}
+.join-note{font-size:.7rem;color:var(--muted)}
+
+/* ============ FOOTER ============ */
+footer{background:#070810;border-top:1px solid var(--line);padding:70px 0 0;position:relative;overflow:hidden}
+.f-top{display:flex;justify-content:space-between;gap:40px;flex-wrap:wrap;padding-bottom:56px}
+.f-brand p{color:var(--muted);max-width:300px;font-size:.9rem;margin-top:16px}
+.f-cols{display:flex;gap:70px;flex-wrap:wrap}
+.f-col h6{font-size:.68rem;letter-spacing:.34em;color:var(--red);text-transform:uppercase;margin-bottom:18px}
+.f-col a{display:block;color:var(--muted);font-size:.9rem;margin-bottom:11px;transition:.25s}
+.f-col a:hover{color:var(--paper);transform:translateX(6px)}
+.f-mega{font-family:var(--head);font-size:clamp(4rem,15vw,13.5rem);line-height:.85;text-align:center;color:transparent;-webkit-text-stroke:1.5px var(--line);letter-spacing:.06em;user-select:none;transition:.5s;cursor:default}
+.f-mega:hover{-webkit-text-stroke:1.5px var(--red);text-shadow:0 0 60px rgba(255,51,82,.3)}
+.f-bot{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);padding:20px 0;margin-top:-16px;font-size:.74rem;color:var(--muted);letter-spacing:.1em;position:relative}
+.f-bot .jp{font-family:var(--jp);letter-spacing:.3em}
+#toTop{position:fixed;right:26px;bottom:26px;width:52px;height:52px;background:var(--red);color:#fff;display:grid;place-items:center;font-size:1.15rem;z-index:800;opacity:0;pointer-events:none;transition:.35s;transform:skewX(-8deg) translateY(14px);box-shadow:0 8px 24px rgba(255,51,82,.4)}
+#toTop.show{opacity:1;pointer-events:auto;transform:skewX(-8deg) translateY(0)}
+#toTop:hover{background:var(--red-deep)}
+
+/* ============ PETALS + REVEAL ============ */
+.petal{position:fixed;top:-5vh;background:radial-gradient(ellipse at 30% 30%,#ffd9e4,#ff8fb0);border-radius:80% 0 80% 0;z-index:1;pointer-events:none;opacity:.32;animation:fall linear infinite}
+@keyframes fall{to{transform:translateY(112vh) rotate(540deg) translateX(9vw)}}
+.reveal{opacity:0;transform:translateY(30px);transition:opacity .9s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.22,1,.36,1);transition-delay:var(--d,0s)}
+.reveal.in{opacity:1;transform:none}
+
+/* ============ RESPONSIVE ============ */
+@media(max-width:960px){
+  .nav-links,.nav-cta .btn{display:none}
+  .burger{display:flex}
+  .vtext{display:none}
+  .srow{grid-template-columns:70px 1fr auto;row-gap:6px}
+  .srow .time{display:none}
+  .join{grid-template-columns:1fr}
+  .badge-spin{display:none}
+}
+@media(max-width:640px){
+  .hero-ui{padding-bottom:150px}
+  .stage{height:360px}
+  .scroll-cue{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.2s!important}
+  .mask>*{transform:none}
+  .reveal{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+
+<div class="cursor"></div><div class="cursor-ring"></div>
+<div id="progress"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="burst"></div>
+  <div class="kanji">暁</div>
+  <div class="lname">AKATSUKI</div>
+  <div class="lbar"><i id="lfill"></i></div>
+  <div class="lpct" id="lpct">000%</div>
+</div>
+
+<!-- NAV -->
+<nav id="nav">
+  <a class="logo" href="#hero" data-cur>
+    <span class="sun">ア</span>
+    <span><b>AKATSUKI</b><small>アカツキ・アニメ</small></span>
+  </a>
+  <div class="nav-links">
+    <a href="#trending" data-cur>Trending</a>
+    <a href="#spotlight" data-cur>Spotlight</a>
+    <a href="#characters" data-cur>Characters</a>
+    <a href="#schedule" data-cur>Schedule</a>
+  </div>
+  <div class="nav-cta">
+    <a href="#join" class="btn btn-red" data-cur><span>JOIN FREE</span></a>
+    <button class="burger" id="burger" aria-label="menu"><i></i><i></i><i></i></button>
+  </div>
+</nav>
+<div class="mnav" id="mnav">
+  <a href="#trending"><small>01</small>TRENDING</a>
+  <a href="#spotlight"><small>02</small>SPOTLIGHT</a>
+  <a href="#characters"><small>03</small>CHARACTERS</a>
+  <a href="#schedule"><small>04</small>SCHEDULE</a>
+  <a href="#join"><small>05</small>JOIN THE GUILD</a>
+</div>
+
+<!-- HERO -->
+<section id="hero">
+  <canvas id="bg3d"></canvas>
+  <div class="hero-ui" id="heroUi">
+    <p class="kick"><i></i>SEASON LINEUP // SUMMER 2026</p>
+    <h1>
+      <span class="mask"><span class="h-l1" style="transition-delay:.05s">ENTER THE</span></span>
+      <span class="mask"><span class="h-mega" data-t="ANIME" style="transition-delay:.15s">ANIME</span></span>
+      <span class="mask"><span class="h-l3" style="transition-delay:.28s">MULTIVERSE.</span></span>
+    </h1>
+    <p class="hero-sub">Simulcasts straight from Tokyo, <b>12,000+ titles</b> in 4K HDR, zero ads, infinite sakuga. The dawn of streaming has come.</p>
+    <div class="hero-ctas">
+      <a href="#trending" class="btn btn-red" data-cur><span>▶&nbsp; START WATCHING</span></a>
+      <a href="#spotlight" class="btn btn-ghost" data-cur><span>EXPLORE CATALOG</span></a>
+    </div>
+    <ul class="hero-meta">
+      <li>4K HDR</li><li>DOLBY ATMOS</li><li>SUB × DUB</li><li>OFFLINE MODE</li>
+    </ul>
+  </div>
+  <div class="vtext">夜明けが来る — <b>アニメの宇宙</b>へようこそ</div>
+  <div class="scroll-cue">SCROLL<i></i>スクロール</div>
+  <div class="badge-spin">
+    <svg viewBox="0 0 120 120"><defs><path id="cir" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0"/></defs>
+    <text><textPath href="#cir">PREMIUM ANIME ✦ SIMULCAST ✦ 4K ✦ NO ADS ✦ </textPath></text></svg>
+    <span class="core">⛩</span>
+  </div>
+</section>
+
+<!-- TICKER -->
+<div class="ticker"><div class="ticker-track" id="tick">
+  <span>JUJUTSU KAISEN</span><span>DEMON SLAYER</span><span>ONE PIECE</span><span>CHAINSAW MAN</span><span>FRIEREN</span><span>ATTACK ON TITAN</span><span>SOLO LEVELING</span><span>DANDADAN</span><span>SPY×FAMILY</span><span>MOB PSYCHO 100</span>
+</div></div>
+
+<!-- TRENDING -->
+<section id="trending" class="sblock"><div class="wrap">
+  <div class="shead reveal">
+    <div><span class="jp">// 急上昇ランキング</span><h2>TRENDING <em>NOW</em></h2></div>
+    <p class="sdesc">Ranked by global watch-time over the last 24 hours. Hover to charge a card — click to dive in.</p>
+  </div>
+  <div class="chips reveal" id="chips" style="--d:.1s">
+    <button class="chip active" data-f="all" data-cur><span>ALL</span></button>
+    <button class="chip" data-f="action" data-cur><span>ACTION</span></button>
+    <button class="chip" data-f="dark" data-cur><span>DARK</span></button>
+    <button class="chip" data-f="shonen" data-cur><span>SHONEN</span></button>
+    <button class="chip" data-f="adventure" data-cur><span>ADVENTURE</span></button>
+    <button class="chip" data-f="comedy" data-cur><span>COMEDY</span></button>
+    <button class="chip" data-f="fantasy" data-cur><span>FANTASY</span></button>
+  </div>
+  <div class="grid" id="grid">
+
+    <article class="acard reveal" data-tilt data-g="dark action" style="--pa:#1a0712;--pb:#6e0f2b;--pc:#ffd9c9;--gl:#ff3352;--d:.02s">
+      <span class="rank">01</span><div class="glare"></div>
+      <div class="poster"><span class="kj">呪</span><span class="strip">呪術廻戦・第４期</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>JUJUTSU KAISEN</h3><span class="jp-t">ジュジュツカイセン</span>
+        <div class="cmeta"><span class="rate">★ 9.2</span><span>S4 · EP 07</span></div>
+        <div class="ctags"><i>Dark</i><i>Action</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="action shonen" style="--pa:#04211b;--pb:#0f6a4e;--pc:#ffe8c2;--gl:#3ee6cf;--d:.06s">
+      <span class="rank">02</span><div class="glare"></div>
+      <div class="poster"><span class="kj">鬼</span><span class="strip">鬼滅の刃・無限城編</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>DEMON SLAYER</h3><span class="jp-t">キメツノヤイバ</span>
+        <div class="cmeta"><span class="rate">★ 9.4</span><span>MOVIE · 3H</span></div>
+        <div class="ctags"><i>Action</i><i>Shonen</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="dark action" style="--pa:#171006;--pb:#5c421a;--pc:#ffdede;--gl:#ffc145;--d:.1s">
+      <span class="rank">03</span><div class="glare"></div>
+      <div class="poster"><span class="kj">巨</span><span class="strip">進撃の巨人・総集編</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>ATTACK ON TITAN</h3><span class="jp-t">シンゲキノキョジン</span>
+        <div class="cmeta"><span class="rate">★ 9.6</span><span>COMPLETE</span></div>
+        <div class="ctags"><i>Dark</i><i>Action</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="adventure shonen" style="--pa:#04203a;--pb:#0d6a9e;--pc:#ffe9a8;--gl:#ffc145;--d:.14s">
+      <span class="rank">04</span><div class="glare"></div>
+      <div class="poster"><span class="kj">海</span><span class="strip">ワンピース・最終章</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>ONE PIECE</h3><span class="jp-t">ワンピース</span>
+        <div class="cmeta"><span class="rate">★ 9.0</span><span>EP 1142</span></div>
+        <div class="ctags"><i>Adventure</i><i>Shonen</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="dark action" style="--pa:#1c0a04;--pb:#8a2f0d;--pc:#ffe3c2;--gl:#ff7a2e;--d:.18s">
+      <span class="rank">05</span><div class="glare"></div>
+      <div class="poster"><span class="kj">鋸</span><span class="strip">チェンソーマン・二期</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>CHAINSAW MAN</h3><span class="jp-t">チェンソーマン</span>
+        <div class="cmeta"><span class="rate">★ 8.9</span><span>S2 · EP 04</span></div>
+        <div class="ctags"><i>Dark</i><i>Action</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="comedy action" style="--pa:#2a0f18;--pb:#a63a5c;--pc:#fff0e0;--gl:#ffa3bd;--d:.22s">
+      <span class="rank">06</span><div class="glare"></div>
+      <div class="poster"><span class="kj">家</span><span class="strip">スパイファミリー</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>SPY × FAMILY</h3><span class="jp-t">スパイファミリー</span>
+        <div class="cmeta"><span class="rate">★ 8.8</span><span>S3 · EP 02</span></div>
+        <div class="ctags"><i>Comedy</i><i>Action</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="fantasy adventure" style="--pa:#0c1e26;--pb:#3f7a86;--pc:#fdf3d0;--gl:#3ee6cf;--d:.26s">
+      <span class="rank">07</span><div class="glare"></div>
+      <div class="poster"><span class="kj">精</span><span class="strip">フリーレン・第二期</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>FRIEREN</h3><span class="jp-t">ソウソウノフリーレン</span>
+        <div class="cmeta"><span class="rate">★ 9.3</span><span>S2 · EP 09</span></div>
+        <div class="ctags"><i>Fantasy</i><i>Adventure</i></div></div>
+    </article>
+
+    <article class="acard reveal" data-tilt data-g="action comedy" style="--pa:#08170f;--pb:#1f8a5a;--pc:#eaffe9;--gl:#3ee6cf;--d:.3s">
+      <span class="rank">08</span><div class="glare"></div>
+      <div class="poster"><span class="kj">霊</span><span class="strip">モブサイコ１００</span><div class="play"><b>▶</b></div></div>
+      <div class="cbody"><h3>MOB PSYCHO 100</h3><span class="jp-t">モブサイコヒャク</span>
+        <div class="cmeta"><span class="rate">★ 8.7</span><span>COMPLETE</span></div>
+        <div class="ctags"><i>Action</i><i>Comedy</i></div></div>
+    </article>
+
+  </div>
+</div></section>
+
+<!-- SPOTLIGHT CAROUSEL -->
+<section id="spotlight" class="sblock"><div class="wrap">
+  <div class="shead reveal">
+    <div><span class="jp">// 注目作品</span><h2>EDITOR'S <em>SPOTLIGHT</em></h2></div>
+    <p class="sdesc">A rotating showcase of certified masterpieces. Drag the stage, use the arrows, or click a side card to focus it.</p>
+  </div>
+  <div class="stage reveal" id="stage" style="--d:.1s">
+    <div class="slide" data-t="FULLMETAL ALCHEMIST" data-jp="ハガネノレンキンジュツシ" data-d="Two brothers pay the ultimate price for forbidden alchemy — and set out to take back everything they lost. The gold standard of the medium." data-tag="Adventure · Shonen · 9.5★" data-kj="錬" style="--pa:#1c1404;--pb:#8a6a12;--pc:#fff3c9"></div>
+    <div class="slide" data-t="VINLAND SAGA" data-jp="ヴィンランドサガ" data-d="A saga of vengeance, violence and the long road to a land of peace. 'I have no enemies.' A true warrior needs no sword." data-tag="Historical · Seinen · 9.1★" data-kj="戦" style="--pa:#0a1420;--pb:#2e5570;--pc:#dff2ff"></div>
+    <div class="slide" data-t="DANDADAN" data-jp="ダンダダン" data-d="Aliens vs. curses vs. first love. The wildest, most kinetic ride in modern anime — pure adrenaline drawn at 24fps glory." data-tag="Supernatural · Chaos · 8.9★" data-kj="怪" style="--pa:#20061e;--pb:#8a1e6e;--pc:#ffd9f4"></div>
+    <div class="slide" data-t="CYBERPUNK: EDGERUNNERS" data-jp="エッジランナーズ" data-d="In Night City, dreams burn bright and fast. A neon tragedy in ten episodes that left the whole fandom in ruins." data-tag="Sci-Fi · Tragedy · 9.0★" data-kj="電" style="--pa:#101020;--pb:#e0362c;--pc:#ffe23d"></div>
+    <div class="slide" data-t="HAIKYUU!!" data-jp="ハイキュー" data-d="The little giant takes flight. The greatest sports anime ever made — every rally feels like a final boss battle." data-tag="Sports · Shonen · 8.8★" data-kj="飛" style="--pa:#201004;--pb:#c2570d;--pc:#ffe9c2"></div>
+  </div>
+  <div class="stage-ui reveal" style="--d:.2s">
+    <div class="sp-info">
+      <span class="jp-t" id="spJp"></span>
+      <h3 id="spTitle"></h3>
+      <p id="spDesc"></p>
+      <div class="sptags" id="spTag"></div>
+    </div>
+    <div class="sp-ctrl">
+      <button class="sp-btn" id="spPrev" data-cur>←</button>
+      <div class="dots" id="spDots"></div>
+      <button class="sp-btn" id="spNext" data-cur>→</button>
+    </div>
+  </div>
+</div></section>
+
+<!-- CHARACTERS -->
+<section id="characters" class="sblock"><div class="wrap">
+  <div class="shead reveal">
+    <div><span class="jp">// キャラクター図鑑</span><h2>LEGENDARY <em>CAST</em></h2></div>
+    <p class="sdesc">Flip the cards to read their creed and scan combat stats. Icons of the multiverse, assembled in one dojo.</p>
+  </div>
+  <div class="fgrid">
+    <div class="fcard reveal" data-cur style="--ca:#0e2a3a;--cb:#2e7ea6;--d:.02s"><div class="finner">
+      <div class="fface ffront"><div class="ring"><b>無</b></div><h4>GOJO SATORU</h4><small>五条悟</small><span class="hint">hover to flip ✦</span></div>
+      <div class="fface fback"><h5>THE HONORED ONE</h5>
+        <p class="q">"Throughout heaven and earth, I alone am the honored one."</p>
+        <div class="stat"><span>Power <b>100</b></span><div class="bar"><i style="--v:100%"></i></div></div>
+        <div class="stat"><span>Speed <b>96</b></span><div class="bar"><i style="--v:96%"></i></div></div>
+        <div class="stat"><span>Charisma <b>99</b></span><div class="bar"><i style="--v:99%"></i></div></div>
+      </div></div></div>
+    <div class="fcard reveal" data-cur style="--ca:#0a2018;--cb:#c2452e;--d:.08s"><div class="finner">
+      <div class="fface ffront"><div class="ring"><b>水</b></div><h4>TANJIRO KAMADO</h4><small>竈門炭治郎</small><span class="hint">hover to flip ✦</span></div>
+      <div class="fface fback"><h5>WATER BREATHING</h5>
+        <p class="q">"No matter how deep the darkness, I will carry the dawn on my blade."</p>
+        <div class="stat"><span>Power <b>84</b></span><div class="bar"><i style="--v:84%"></i></div></div>
+        <div class="stat"><span>Speed <b>88</b></span><div class="bar"><i style="--v:88%"></i></div></div>
+        <div class="stat"><span>Heart <b>100</b></span><div class="bar"><i style="--v:100%"></i></div></div>
+      </div></div></div>
+    <div class="fcard reveal" data-cur style="--ca:#14161f;--cb:#4a5170;--d:.14s"><div class="finner">
+      <div class="fface ffront"><div class="ring"><b>刃</b></div><h4>LEVI ACKERMAN</h4><small>リヴァイ兵長</small><span class="hint">hover to flip ✦</span></div>
+      <div class="fface fback"><h5>HUMANITY'S STRONGEST</h5>
+        <p class="q">"The only thing we're allowed to do is believe we won't regret the choice we made."</p>
+        <div class="stat"><span>Power <b>95</b></span><div class="bar"><i style="--v:95%"></i></div></div>
+        <div class="stat"><span>Speed <b>99</b></span><div class="bar"><i style="--v:99%"></i></div></div>
+        <div class="stat"><span>Tea Game <b>100</b></span><div class="bar"><i style="--v:100%"></i></div></div>
+      </div></div></div>
+    <div class="fcard reveal" data-cur style="--ca:#2a0a14;--cb:#a6284e;--d:.2s"><div class="finner">
+      <div class="fface ffront"><div class="ring"><b>棘</b></div><h4>YOR FORGER</h4><small>ヨル・フォージャー</small><span class="hint">hover to flip ✦</span></div>
+      <div class="fface fback"><h5>THORN PRINCESS</h5>
+        <p class="q">"Whoever threatens this family… will not live to see morning."</p>
+        <div class="stat"><span>Power <b>97</b></span><div class="bar"><i style="--v:97%"></i></div></div>
+        <div class="stat"><span>Speed <b>93</b></span><div class="bar"><i style="--v:93%"></i></div></div>
+        <div class="stat"><span>Cooking <b>12</b></span><div class="bar"><i style="--v:12%"></i></div></div>
+      </div></div></div>
+  </div>
+</div></section>
+
+<!-- STATS BAND -->
+<section id="stats"><div class="wrap"><div class="stats-in">
+  <div class="stat-b reveal"><b class="cnt" data-t="12480" data-s="+">0</b><span>Titles Licensed</span></div>
+  <div class="stat-b reveal" style="--d:.1s"><b class="cnt" data-t="2.4" data-dec="1" data-s="M+">0</b><span>Guild Members</span></div>
+  <div class="stat-b reveal" style="--d:.2s"><b class="cnt" data-t="890">0</b><span>Simulcasts / Season</span></div>
+  <div class="stat-b reveal" style="--d:.3s"><b class="cnt" data-t="190" data-s="+">0</b><span>Countries Reached</span></div>
+</div></div></section>
+
+<!-- SCHEDULE -->
+<section id="schedule" class="sblock"><div class="wrap">
+  <div class="shead reveal">
+    <div><span class="jp">// 放送スケジュール</span><h2>AIRING THIS <em>WEEK</em></h2></div>
+    <p class="sdesc">Simulcast times synced to your local zone. Today's drops glow red — don't blink.</p>
+  </div>
+  <div class="sched reveal" style="--d:.1s">
+    <div class="srow" data-day="1"><span class="day">MON</span><div class="st">JUJUTSU KAISEN S4<small>ジュジュツカイセン</small></div><span class="ep">EP 08</span><span class="time">17:30</span><span class="badge sub">SUB + DUB</span></div>
+    <div class="srow" data-day="2"><span class="day">TUE</span><div class="st">ONE PIECE<small>ワンピース</small></div><span class="ep">EP 1143</span><span class="time">09:00</span><span class="badge sub">SUB</span></div>
+    <div class="srow" data-day="3"><span class="day">WED</span><div class="st">DANDADAN S2<small>ダンダダン</small></div><span class="ep">EP 05</span><span class="time">18:00</span><span class="badge sub">SUB + DUB</span></div>
+    <div class="srow" data-day="4"><span class="day">THU</span><div class="st">SOLO LEVELING S3<small>オレダケレベルアップナケン</small></div><span class="ep">EP 11</span><span class="time">20:00</span><span class="badge dub">DUB FIRST</span></div>
+    <div class="srow" data-day="5"><span class="day">FRI</span><div class="st">SPY × FAMILY S3<small>スパイファミリー</small></div><span class="ep">EP 03</span><span class="time">17:00</span><span class="badge sub">SUB + DUB</span></div>
+    <div class="srow" data-day="6"><span class="day">SAT</span><div class="st">FRIEREN S2<small>ソウソウノフリーレン</small></div><span class="ep">EP 10</span><span class="time">15:30</span><span class="badge sub">SUB</span></div>
+    <div class="srow" data-day="0"><span class="day">SUN</span><div class="st">CHAINSAW MAN S2<small>チェンソーマン</small></div><span class="ep">EP 05</span><span class="time">16:00</span><span class="badge sub">SUB + DUB</span></div>
+  </div>
+</div></section>
+
+<!-- JOIN -->
+<section id="join" class="sblock"><div class="wrap">
+  <div class="join reveal">
+    <div class="join-l">
+      <h2>JOIN THE GUILD.<br><em>THE DAWN IS FREE.</em></h2>
+      <p>7 days of premium, your watchlist synced across every device, and simulcast alerts 30 seconds before Tokyo goes live.</p>
+    </div>
+    <form class="join-r" id="joinForm">
+      <label for="em">Email Address // メール</label>
+      <input type="email" id="em" placeholder="senpai@akatsuki.tv" required>
+      <button class="btn btn-red" type="submit" data-cur><span>CLAIM MY SEAT ⚔</span></button>
+      <span class="join-ok" id="joinOk">✦ ようこそ、先輩！ Check your inbox — welcome to the guild.</span>
+      <p class="join-note">No credit card. No ads. Cancel whenever — we'll still love you.</p>
+    </form>
+  </div>
+</div></section>
+
+<!-- FOOTER -->
+<footer><div class="wrap">
+  <div class="f-top">
+    <div class="f-brand">
+      <a class="logo" href="#hero"><span class="sun">ア</span><span><b>AKATSUKI</b><small>アカツキ・アニメ</small></span></a>
+      <p>The premium home of anime. Simulcasts, classics, films and OVAs — streamed at the speed of sakuga.</p>
+    </div>
+    <div class="f-cols">
+      <div class="f-col"><h6>Browse</h6><a href="#trending" data-cur>Trending</a><a href="#spotlight" data-cur>Spotlight</a><a href="#schedule" data-cur>Simulcasts</a><a href="#" data-cur>Movies</a></div>
+      <div class="f-col"><h6>Community</h6><a href="#" data-cur>Discord Dojo</a><a href="#" data-cur>Watch Parties</a><a href="#" data-cur>Fan Art Wall</a><a href="#" data-cur>Forums</a></div>
+      <div class="f-col"><h6>Company</h6><a href="#" data-cur>About 暁</a><a href="#" data-cur>Careers</a><a href="#" data-cur>Press Kit</a><a href="#" data-cur>Support</a></div>
+    </div>
+  </div>
+  <div class="f-mega">AKATSUKI</div>
+  <div class="f-bot">
+    <span>© 2026 AKATSUKI STREAMING K.K. — All worlds reserved.</span>
+    <span class="jp">夜明けのアニメ宇宙 ⛩</span>
+    <span>Built for otaku, by otaku.</span>
+  </div>
+</div></footer>
+
+<button id="toTop" data-cur aria-label="back to top">↑</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+'use strict';
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const $ = s=>document.querySelector(s), $$ = s=>[...document.querySelectorAll(s)];
+
+/* ---------- LOADER ---------- */
+let p=0; const lfill=$('#lfill'), lpct=$('#lpct');
+const li=setInterval(()=>{
+  p=Math.min(100,p+Math.random()*16+6);
+  lfill.style.width=p+'%'; lpct.textContent=String(Math.floor(p)).padStart(3,'0')+'%';
+  if(p>=100){clearInterval(li);setTimeout(()=>{$('#loader').classList.add('done');document.body.classList.add('loaded');},350);}
+},140);
+
+/* ---------- CURSOR ---------- */
+const cur=$('.cursor'), ring=$('.cursor-ring'); let mx=innerWidth/2,my=innerHeight/2,rx=mx,ry=my;
+addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;});
+(function loop(){cur.style.left=mx+'px';cur.style.top=my+'px';rx+=(mx-rx)*.16;ry+=(my-ry)*.16;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(loop);})();
+document.addEventListener('mouseover',e=>{document.body.classList.toggle('cur-big',!!e.target.closest('[data-cur],a,button'));});
+
+/* ---------- NAV / MENU / SCROLL CHROME ---------- */
+const nav=$('#nav'), toTop=$('#toTop'), prog=$('#progress'), heroUi=$('#heroUi');
+addEventListener('scroll',()=>{
+  const y=scrollY, h=document.documentElement.scrollHeight-innerHeight;
+  nav.classList.toggle('scrolled',y>40);
+  toTop.classList.toggle('show',y>600);
+  prog.style.width=(y/h*100)+'%';
+  if(y<innerHeight){heroUi.style.transform=`translateY(${y*.28}px)`;heroUi.style.opacity=1-y/(innerHeight*.9);}
+},{passive:true});
+toTop.onclick=()=>scrollTo({top:0,behavior:'smooth'});
+$('#burger').onclick=()=>document.body.classList.toggle('menu-open');
+$$('.mnav a').forEach(a=>a.onclick=()=>document.body.classList.remove('menu-open'));
+
+/* ---------- REVEAL ---------- */
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('in');io.unobserve(e.target);}}),{threshold:.12});
+$$('.reveal').forEach(el=>io.observe(el));
+
+/* ---------- COUNTERS ---------- */
+const cio=new IntersectionObserver(es=>es.forEach(e=>{
+  if(!e.isIntersecting)return; cio.unobserve(e.target);
+  const el=e.target, t=parseFloat(el.dataset.t), dec=+(el.dataset.dec||0), sfx=el.dataset.s||'', st=performance.now();
+  (function tick(now){const k=Math.min(1,(now-st)/1600), v=t*(1-Math.pow(1-k,3));
+    el.textContent=(dec?v.toFixed(dec):Math.floor(v).toLocaleString())+sfx;
+    if(k<1)requestAnimationFrame(tick);})(st);
+}),{threshold:.5});
+$$('.cnt').forEach(el=>cio.observe(el));
+
+/* ---------- 3D TILT CARDS ---------- */
+$$('[data-tilt]').forEach(card=>{
+  const glare=card.querySelector('.glare');
+  card.addEventListener('mousemove',e=>{
+    const r=card.getBoundingClientRect(), px=(e.clientX-r.left)/r.width, py=(e.clientY-r.top)/r.height;
+    card.style.transform=`perspective(900px) rotateY(${(px-.5)*16}deg) rotateX(${(py-.5)*-14}deg) translateZ(8px)`;
+    glare.style.setProperty('--gx',px*100+'%'); glare.style.setProperty('--gy',py*100+'%');
+  });
+  card.addEventListener('mouseleave',()=>{card.style.transform='perspective(900px)';});
+});
+
+/* ---------- GENRE FILTER ---------- */
+$('#chips').addEventListener('click',e=>{
+  const b=e.target.closest('.chip'); if(!b)return;
+  $$('#chips .chip').forEach(c=>c.classList.remove('active')); b.classList.add('active');
+  const f=b.dataset.f;
+  $$('#grid .acard').forEach(c=>{
+    const show=f==='all'||c.dataset.g.split(' ').includes(f);
+    c.classList.toggle('hide',!show);
+    if(show){c.style.animation='none';c.offsetHeight;c.style.animation='';}
+  });
+});
+
+/* ---------- 3D COVERFLOW ---------- */
+const slides=$$('.slide'), stage=$('#stage'), dots=$('#spDots'); let idx=2, dragX=null;
+slides.forEach((s,i)=>{
+  s.innerHTML=`<div class="poster"><span class="kj">${s.dataset.kj}</span></div>`;
+  const d=document.createElement('i'); d.onclick=()=>go(i); dots.appendChild(d);
+  s.addEventListener('click',()=>{if(i!==idx)go(i);});
+});
+function layout(){
+  const offX=innerWidth<640?130:innerWidth<980?185:240;
+  slides.forEach((s,i)=>{
+    const off=i-idx, abs=Math.abs(off);
+    s.style.transform=`translate(-50%,-50%) translateX(${off*offX}px) translateZ(${-abs*170}px) rotateY(${off===0?0:off>0?-34:34}deg)`;
+    s.style.zIndex=100-abs; s.style.opacity=abs>2?0:1; s.classList.toggle('active',off===0);
+  });
+  [...dots.children].forEach((d,i)=>d.classList.toggle('on',i===idx));
+  const a=slides[idx];
+  $('#spTitle').textContent=a.dataset.t; $('#spJp').textContent=a.dataset.jp;
+  $('#spDesc').textContent=a.dataset.d; $('#spTag').textContent='✦ '+a.dataset.tag;
+}
+function go(i){idx=(i+slides.length)%slides.length;layout();}
+$('#spPrev').onclick=()=>go(idx-1); $('#spNext').onclick=()=>go(idx+1);
+addEventListener('keydown',e=>{if(e.key==='ArrowLeft')go(idx-1);if(e.key==='ArrowRight')go(idx+1);});
+stage.addEventListener('pointerdown',e=>dragX=e.clientX);
+addEventListener('pointerup',e=>{if(dragX===null)return;const d=e.clientX-dragX;if(Math.abs(d)>40)go(idx+(d<0?1:-1));dragX=null;});
+layout();
+if(!RM)setInterval(()=>{if(!stage.matches(':hover'))go(idx+1);},6000);
+
+/* ---------- SCHEDULE: highlight today ---------- */
+const today=new Date().getDay();
+$$('.srow').forEach(r=>{
+  if(+r.dataset.day===today){r.classList.add('today');r.querySelector('.day').insertAdjacentHTML('beforeend','<span class="live"><i></i>LIVE</span>');}
+});
+
+/* ---------- JOIN FORM ---------- */
+$('#joinForm').addEventListener('submit',e=>{
+  e.preventDefault();
+  const btn=e.target.querySelector('.btn'); btn.querySelector('span').textContent='⛩ WELCOME, SENPAI';
+  $('#joinOk').style.display='block'; $('#em').value='';
+});
+
+/* ---------- AMBIENT DOM PETALS ---------- */
+if(!RM)for(let i=0;i<9;i++){
+  const p=document.createElement('i'); p.className='petal';
+  const sz=6+Math.random()*9;
+  p.style.cssText=`left:${Math.random()*100}vw;width:${sz}px;height:${sz}px;animation-duration:${9+Math.random()*11}s;animation-delay:${-Math.random()*18}s`;
+  document.body.appendChild(p);
+}
+
+/* ---------- TICKER duplicate ---------- */
+$('#tick').innerHTML+=$('#tick').innerHTML;
+
+/* =========================================================
+   THREE.JS — TORII TUNNEL / SAKURA / SUN / KANJI SPIRITS
+========================================================= */
+if(typeof THREE!=='undefined'){
+  const canvas=$('#bg3d');
+  const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  const scene=new THREE.Scene();
+  scene.fog=new THREE.Fog(0x0a0c16,16,80);
+  const cam=new THREE.PerspectiveCamera(58,innerWidth/innerHeight,.1,300);
+  cam.position.set(0,2.4,10);
+
+  /* ground + grid */
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(500,400),new THREE.MeshBasicMaterial({color:0x0a0c16}));
+  ground.rotation.x=-Math.PI/2; ground.position.set(0,-.05,-100); scene.add(ground);
+  const grid=new THREE.GridHelper(500,100,0xff3352,0x1c2240);
+  grid.material.transparent=true; grid.material.opacity=.2; grid.position.z=-80; scene.add(grid);
+
+  /* sun + glow */
+  const sun=new THREE.Mesh(new THREE.CircleGeometry(11,48),new THREE.MeshBasicMaterial({color:0xff3347,fog:false}));
+  sun.position.set(0,9,-130); scene.add(sun);
+  const gc=document.createElement('canvas'); gc.width=gc.height=256;
+  const g2=gc.getContext('2d'), gr=g2.createRadialGradient(128,128,10,128,128,128);
+  gr.addColorStop(0,'rgba(255,90,90,.9)');gr.addColorStop(.5,'rgba(255,51,82,.28)');gr.addColorStop(1,'rgba(255,51,82,0)');
+  g2.fillStyle=gr;g2.fillRect(0,0,256,256);
+  const glowTex=new THREE.CanvasTexture(gc);
+  const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,fog:false}));
+  glow.scale.set(60,60,1); glow.position.set(0,9,-132); scene.add(glow);
+
+  /* torii builder */
+  const matRed=new THREE.MeshBasicMaterial({color:0xe6364e});
+  const matDark=new THREE.MeshBasicMaterial({color:0x12152a});
+  function makeTorii(){
+    const g=new THREE.Group();
+    const pillar=new THREE.BoxGeometry(.5,7,.5);
+    const p1=new THREE.Mesh(pillar,matRed); p1.position.set(-3,3.5,0);
+    const p2=new THREE.Mesh(pillar,matRed); p2.position.set(3,3.5,0);
+    const nuki=new THREE.Mesh(new THREE.BoxGeometry(7.4,.45,.45),matRed); nuki.position.y=5.1;
+    const gaku=new THREE.Mesh(new THREE.BoxGeometry(.34,1,.34),matDark); gaku.position.y=6.1;
+    const kasagi=new THREE.Mesh(new THREE.BoxGeometry(8.4,.5,.6),matDark); kasagi.position.y=7.05;
+    const cap=new THREE.Mesh(new THREE.BoxGeometry(9,.34,.78),matDark); cap.position.y=7.42;
+    g.add(p1,p2,nuki,gaku,kasagi,cap); return g;
+  }
+  const N=8, SP=9, DEPTH=N*SP, toriis=[];
+  for(let i=0;i<N;i++){const t=makeTorii(); t.position.z=4-i*SP; scene.add(t); toriis.push(t);}
+
+  /* kanji spirit sprites */
+  function kanjiSprite(ch){
+    const c=document.createElement('canvas'); c.width=c.height=256;
+    const x=c.getContext('2d');
+    x.font='900 170px "Noto Sans JP",sans-serif'; x.textAlign='center'; x.textBaseline='middle';
+    x.shadowColor='rgba(255,51,82,.95)'; x.shadowBlur=26;
+    x.fillStyle='rgba(255,51,82,.9)'; x.fillText(ch,128,132);
+    x.shadowBlur=0; x.strokeStyle='rgba(244,239,228,.85)'; x.lineWidth=3; x.strokeText(ch,128,132);
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(c),transparent:true,depthWrite:false}));
+    s.scale.set(2.6,2.6,1); return s;
+  }
+  const spirits=[];
+  ['ア','カ','ツ','キ'].forEach((ch,i)=>{
+    const s=kanjiSprite(ch);
+    s.position.set(i%2?5.4:-5.4, 3.4+(i%3)*.8, -i*16-6);
+    scene.add(s); spirits.push({s,ph:i*1.7,base:s.position.y});
+  });
+
+  /* lantern glows along the path */
+  const lanterns=[];
+  for(let i=0;i<10;i++){
+    const l=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffc145,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending,opacity:.5}));
+    l.scale.set(1.6,1.6,1);
+    l.position.set(i%2?4.2:-4.2, 1.3, -i*7);
+    scene.add(l); lanterns.push(l);
+  }
+
+  /* sakura petals */
+  function petalTex(){
+    const c=document.createElement('canvas'); c.width=c.height=64;
+    const x=c.getContext('2d');
+    const g3=x.createRadialGradient(32,28,3,32,32,28);
+    g3.addColorStop(0,'#ffe4ee');g3.addColorStop(.6,'#ffa8c4');g3.addColorStop(1,'rgba(255,120,160,0)');
+    x.fillStyle=g3; x.beginPath(); x.ellipse(32,32,26,15,-.6,0,7); x.fill();
+    return new THREE.CanvasTexture(c);
+  }
+  const COUNT=innerWidth<700?160:380;
+  const pos=new Float32Array(COUNT*3), vel=[];
+  for(let i=0;i<COUNT;i++){
+    pos[i*3]=(Math.random()-.5)*36; pos[i*3+1]=Math.random()*15; pos[i*3+2]=-Math.random()*80+8;
+    vel.push({f:.6+Math.random()*1.4,d:Math.random()*6.28,s:.4+Math.random()*.8});
+  }
+  const pgeo=new THREE.BufferGeometry();
+  pgeo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  const petals=new THREE.Points(pgeo,new THREE.PointsMaterial({size:.34,map:petalTex(),transparent:true,depthWrite:false,opacity:.95}));
+  scene.add(petals);
+
+  /* mouse parallax */
+  let tx=0,ty=0;
+  addEventListener('mousemove',e=>{tx=(e.clientX/innerWidth-.5)*2; ty=(e.clientY/innerHeight-.5)*2;});
+
+  const speed=RM?0:2.3, clock=new THREE.Clock();
+  function animate(){
+    requestAnimationFrame(animate);
+    const t=clock.getElapsedTime(), mv=speed*clock.getDelta()+speed/60;
+    toriis.forEach(tor=>{tor.position.z+=mv; if(tor.position.z>12)tor.position.z-=DEPTH;});
+    lanterns.forEach((l,i)=>{l.position.z+=mv; if(l.position.z>10)l.position.z-=70; l.position.y=1.3+Math.sin(t*2+i)*.18;});
+    spirits.forEach(o=>{o.s.position.z+=mv*.9; if(o.s.position.z>8)o.s.position.z-=64; o.s.position.y=o.base+Math.sin(t*1.2+o.ph)*.4;});
+    const arr=pgeo.attributes.position.array;
+    for(let i=0;i<COUNT;i++){
+      arr[i*3+1]-=vel[i].f*.02; arr[i*3]+=Math.sin(t*vel[i].s+vel[i].d)*.012;
+      if(arr[i*3+1]<0){arr[i*3+1]=15; arr[i*3]=(Math.random()-.5)*36;}
+    }
+    pgeo.attributes.position.needsUpdate=true;
+    const idle=RM?0:Math.sin(t*.4)*.35;
+    cam.position.x+=((tx*1.5+idle)-cam.position.x)*.05;
+    cam.position.y+=((2.4-ty*.7)-cam.position.y)*.05;
+    cam.rotation.z+=((-tx*.03)-cam.rotation.z)*.05;
+    cam.lookAt(0,2.9,-14);
+    renderer.render(scene,cam);
+  }
+  animate();
+  addEventListener('resize',()=>{
+    cam.aspect=innerWidth/innerHeight; cam.updateProjectionMatrix();
+    renderer.setSize(innerWidth,innerHeight);
+  });
+  renderer.setSize(innerWidth,innerHeight);
+}else{
+  $('#bg3d').style.display='none';
+}
+})();
+</script>
+</body>
+</html>
