@@ -2,70 +2,86 @@ import * as THREE from 'three';
 
 export class ScreenManager {
   public dagNodes: any[] = [];
-  
+
   public hudCanvas!: HTMLCanvasElement;
   public hudCtx!: CanvasRenderingContext2D;
   public hudTexture!: THREE.CanvasTexture;
   public hudMesh!: THREE.Mesh;
   public hudLight!: THREE.PointLight;
+  public hudBaseY = 5;
+
+  private dagMesh: THREE.Mesh | null = null;
 
   initHUD(scene: THREE.Scene) {
     this.hudCanvas = document.createElement('canvas');
     this.hudCanvas.width = 512; this.hudCanvas.height = 256;
     this.hudCtx = this.hudCanvas.getContext('2d')!;
     this.hudTexture = new THREE.CanvasTexture(this.hudCanvas);
-    
+
     const hudMat = new THREE.MeshBasicMaterial({ map: this.hudTexture, transparent: true, side: THREE.DoubleSide });
     this.hudMesh = new THREE.Mesh(new THREE.PlaneGeometry(4, 2), hudMat);
-    this.hudMesh.position.set(15, 5, -15);
+    this.hudMesh.position.set(0, 5, -8.5);
     scene.add(this.hudMesh);
 
     this.hudLight = new THREE.PointLight(0x7C3AED, 2, 8);
-    this.hudLight.position.set(15, 5, -14.5);
+    this.hudLight.position.set(0, 5, -8);
     scene.add(this.hudLight);
 
     this.drawSystemHUD(0, 0, 0);
   }
 
-  initDAGScreen(scene: THREE.Scene) {
-    scene.traverse(obj => {
-      if (obj instanceof THREE.Mesh && obj.userData.isScreen && obj.userData.screenType === 'dag') {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1024; canvas.height = 512;
-        const ctx = canvas.getContext('2d')!;
-        const texture = new THREE.CanvasTexture(canvas);
-        (obj.material as THREE.MeshStandardMaterial).map = texture;
-        (obj.material as THREE.MeshStandardMaterial).emissiveMap = texture;
-        (obj.material as THREE.MeshStandardMaterial).emissiveIntensity = 1.0;
-        (obj.material as THREE.MeshStandardMaterial).needsUpdate = true;
-        obj.userData.dagCanvas = canvas;
-        obj.userData.dagCtx = ctx;
-        obj.userData.dagTexture = texture;
-        this.drawDAGScreen(obj, []);
-      }
-    });
+  public positionHUD(brain: THREE.Vector3) {
+    this.hudBaseY = brain.y + 2.6;
+    this.hudMesh.position.set(brain.x, this.hudBaseY, brain.z);
+    this.hudLight.position.set(brain.x, this.hudBaseY - 0.2, brain.z + 0.5);
+  }
+
+  // Builds the Meeting Room wall screen AFTER the GLB has loaded (cached — no traversals)
+  public createDAGScreen(scene: THREE.Scene, meetingAnchor: THREE.Vector3) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024; canvas.height = 512;
+    const ctx = canvas.getContext('2d')!;
+    const texture = new THREE.CanvasTexture(canvas);
+
+    const frame = new THREE.Mesh(
+      new THREE.BoxGeometry(6.4, 3.4, 0.12),
+      new THREE.MeshStandardMaterial({ color: 0x292827, roughness: 0.4, metalness: 0.6 })
+    );
+    frame.position.set(meetingAnchor.x, 2.3, meetingAnchor.z - 2.66);
+    scene.add(frame);
+
+    const mesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(6, 3),
+      new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide })
+    );
+    mesh.position.set(meetingAnchor.x, 2.3, meetingAnchor.z - 2.58);
+    mesh.userData.dagCtx = ctx;
+    mesh.userData.dagTexture = texture;
+    scene.add(mesh);
+
+    this.dagMesh = mesh;
+    this.drawDAGScreen(mesh, this.dagNodes);
   }
 
   public updateDAG(scene: THREE.Scene, steps: any[]) {
     this.dagNodes = steps;
+    if (this.dagMesh) { this.drawDAGScreen(this.dagMesh, steps); return; }
     scene.traverse(obj => {
-      if (obj instanceof THREE.Mesh && obj.userData.screenType === 'dag') {
-        this.drawDAGScreen(obj, steps);
-      }
+      if (obj instanceof THREE.Mesh && obj.userData.screenType === 'dag') this.drawDAGScreen(obj, steps);
     });
   }
 
   private drawDAGScreen(mesh: THREE.Mesh, steps: any[]) {
     const ctx = mesh.userData.dagCtx as CanvasRenderingContext2D;
     if (!ctx) return;
-    
+
     ctx.fillStyle = '#0A0A12';
     ctx.fillRect(0, 0, 1024, 512);
 
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
-    for(let x=0; x<1024; x+=40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,512); ctx.stroke(); }
-    for(let y=0; y<512; y+=40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(1024,y); ctx.stroke(); }
+    for (let x = 0; x < 1024; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 512); ctx.stroke(); }
+    for (let y = 0; y < 512; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1024, y); ctx.stroke(); }
 
     ctx.font = 'bold 32px Archivo, sans-serif';
     ctx.fillStyle = '#C75D3F';
@@ -78,22 +94,22 @@ export class ScreenManager {
       ctx.fillStyle = '#4A4A52';
       ctx.font = '24px Manrope, sans-serif';
       ctx.fillText('Awaiting Task Dispatch...', 40, 256);
-      mesh.userData.dagTexture.needsUpdate = true;
+      (mesh.userData.dagTexture as THREE.CanvasTexture).needsUpdate = true;
       return;
     }
 
     const stepWidth = 180, stepHeight = 80, gap = 60;
     const startX = 512 - (steps.length * (stepWidth + gap) - gap) / 2;
-    
+
     steps.forEach((step, i) => {
       const x = startX + i * (stepWidth + gap);
       const y = 180;
-      
+
       if (i > 0) {
-        const prevX = startX + (i-1) * (stepWidth + gap) + stepWidth;
+        const prevX = startX + (i - 1) * (stepWidth + gap) + stepWidth;
         ctx.beginPath();
-        ctx.moveTo(prevX, y + stepHeight/2);
-        ctx.lineTo(x, y + stepHeight/2);
+        ctx.moveTo(prevX, y + stepHeight / 2);
+        ctx.lineTo(x, y + stepHeight / 2);
         ctx.strokeStyle = '#4A4A52';
         ctx.lineWidth = 3;
         ctx.stroke();
@@ -105,7 +121,7 @@ export class ScreenManager {
       ctx.beginPath();
       ctx.roundRect(x, y, stepWidth, stepHeight, 8);
       ctx.fill();
-      if(step.status === 'pending') ctx.stroke();
+      if (step.status === 'pending') ctx.stroke();
 
       ctx.fillStyle = '#FFFFFF';
       ctx.font = 'bold 18px Archivo, sans-serif';
@@ -115,7 +131,7 @@ export class ScreenManager {
       ctx.fillText(step.status?.toUpperCase(), x + 15, y + 55);
     });
 
-    mesh.userData.dagTexture.needsUpdate = true;
+    (mesh.userData.dagTexture as THREE.CanvasTexture).needsUpdate = true;
   }
 
   public drawSystemHUD(activeTasks: number, tokensBurned: number, totalAgents: number) {
@@ -137,7 +153,7 @@ export class ScreenManager {
     ctx.fillText(`ACTIVE NODES   : ${activeTasks}`, 25, 90);
     ctx.fillText(`TOKENS BURNED  : ${tokensBurned.toLocaleString()}`, 25, 120);
     ctx.fillText(`ACTIVE AGENTS  : ${totalAgents}`, 25, 150);
-    
+
     ctx.strokeStyle = '#C75D3F';
     ctx.lineWidth = 3;
     ctx.beginPath();
@@ -180,6 +196,7 @@ export class ScreenManager {
   public updateAgentLog(mesh: THREE.Group, log: string) {
     mesh.traverse(c => {
       if (c instanceof THREE.Mesh && c.userData.isScreen && c.userData.screenType === 'terminal') {
+        if (!c.userData.screenData) return;
         if (!c.userData.logs) c.userData.logs = [];
         c.userData.logs.push(log);
         if (c.userData.logs.length > 8) c.userData.logs.shift();

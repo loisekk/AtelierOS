@@ -1,16 +1,26 @@
 import * as THREE from 'three';
 
-export const WAYPOINTS: Record<string, THREE.Vector3> = {
-  office_center: new THREE.Vector3(35, 0, 0),
-  office_door: new THREE.Vector3(25, 0, 0),
-  spine_center: new THREE.Vector3(15, 0, 0),
-  meeting_door: new THREE.Vector3(15, 0, 7),
-  meeting_table: new THREE.Vector3(15, 0, 11),
-  knowledge_door: new THREE.Vector3(-6, 0, 5),
-  knowledge_center: new THREE.Vector3(-11.5, 0, 10),
-  ceo_door: new THREE.Vector3(15, 0, -2),
-  ceo_center: new THREE.Vector3(15, 0, -10)
+// Helper function to easily create Vector3s from arrays (replaces the missing 'V' import)
+const V = (arr: [number, number, number]) => new THREE.Vector3(arr[0], arr[1], arr[2]);
+
+// TODO: UPDATE THESE COORDINATES USING THE logCameraPosition() DEBUG TOOL IN ATELIERENGINE.TS
+// For now, they are set to temporary placeholders for rapid validation.
+const WAYPOINT_SEEDS: Record<string, [number, number, number]> = {
+  office_center: [0, 0, 5],
+  office_door: [0, 0, 3],
+  spine_center: [0, 0, 0],
+  meeting_door: [0, 0, -3],
+  meeting_table: [0, 0, -5],
+  knowledge_door: [-8, 0, 4.5],
+  knowledge_center: [-19.5, 0, 7.5],
+  ceo_door: [0, 0, -4.5],
+  ceo_center: [0, 0, -8.0]
 };
+
+// Convert the seeds into actual THREE.Vector3 objects for the pathfinding engine
+export const WAYPOINTS: Record<string, THREE.Vector3> = Object.fromEntries(
+  Object.entries(WAYPOINT_SEEDS).map(([key, pos]) => [key, V(pos)])
+);
 
 const EDGES: Record<string, string[]> = {
   office_center: ['office_door'],
@@ -44,7 +54,8 @@ export function findPath(startKey: string, endKey: string): THREE.Vector3[] {
   const path: THREE.Vector3[] = [];
   let current: string | null = endKey;
   while (current) {
-    path.unshift(WAYPOINTS[current]);
+    // Safety check: if a waypoint is somehow missing, default to 0,0,0 to prevent crashes
+    path.unshift(WAYPOINTS[current] || new THREE.Vector3(0, 0, 0));
     current = parent[current];
   }
   return path;
@@ -53,9 +64,14 @@ export function findPath(startKey: string, endKey: string): THREE.Vector3[] {
 export function getClosestWaypoint(pos: THREE.Vector3): string {
   let closestWaypoint = 'office_center';
   let minDist = Infinity;
+  
   Object.entries(WAYPOINTS).forEach(([key, p]) => {
     const d = pos.distanceTo(p);
-    if (d < minDist) { minDist = d; closestWaypoint = key; }
+    if (d < minDist) { 
+      minDist = d; 
+      closestWaypoint = key; 
+    }
   });
+  
   return closestWaypoint;
 }

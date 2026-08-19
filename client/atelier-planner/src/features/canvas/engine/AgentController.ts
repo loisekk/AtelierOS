@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import type { PlacedItemMeta, AgentStatus } from '../../ai-agents/types';
 import { findPath, getClosestWaypoint } from './Navigation';
 import { ScreenManager } from './ScreenManager';
+import { MEETING_ANCHOR, WORLD } from '../architecture/SpatialConfig';
+
+const WALK_SPEED = 3.0;
 
 export class AgentController {
   private scene: THREE.Scene;
@@ -10,6 +13,9 @@ export class AgentController {
   private meshes: Map<string, THREE.Group>;
   private avatars: Map<string, THREE.Group>;
 
+  // Public so AtelierEngine can sync it after GLB load (single source of truth: WORLD.floorY)
+  public floorY: number = WORLD.floorY;
+
   private agentPaths = new Map<string, THREE.Vector3[]>();
   private agentWalkTargets = new Map<string, string>();
 
@@ -17,6 +23,8 @@ export class AgentController {
   private meetingBubbleLight!: THREE.PointLight;
   private meetingTimer: number | null = null;
   private meetingAgents: string[] = [];
+
+  private _dir = new THREE.Vector3(); // reused every frame — zero GC pressure
 
   constructor(scene: THREE.Scene, screenManager: ScreenManager, placedItems: PlacedItemMeta[], meshes: Map<string, THREE.Group>, avatars: Map<string, THREE.Group>) {
     this.scene = scene;
@@ -34,7 +42,7 @@ export class AgentController {
       transparent: true, opacity: 0.25, roughness: 0.1, transmission: 0.9
     });
     this.meetingBubble = new THREE.Mesh(geo, mat);
-    this.meetingBubble.position.set(15, 2.5, 11);
+    this.meetingBubble.position.copy(MEETING_ANCHOR);
     this.meetingBubble.visible = false;
     this.scene.add(this.meetingBubble);
 
@@ -74,11 +82,13 @@ export class AgentController {
     const avatar = this.avatars.get(agentId);
     if (!item || !avatar) return;
 
+    if (avatar.parent !== this.scene) this.scene.attach(avatar);
+
     const deskPos = new THREE.Vector3(item.position.x, 0, item.position.z);
     const startKey = getClosestWaypoint(deskPos);
     const path = findPath(startKey, 'office_center');
     path.push(deskPos);
-    
+
     this.agentPaths.set(agentId, path);
     this.agentWalkTargets.set(agentId, 'desk');
     this.updateAgentStatus(agentId, 'walking');
@@ -95,9 +105,11 @@ export class AgentController {
   }
 
   public update(dt: number, t: number, callbacks: any) {
+    const fy = this.floorY; // synced by AtelierEngine after GLB load
+
     if (this.meetingBubble.visible) {
       this.meetingBubble.rotation.y += 0.01;
-      this.meetingBubble.position.y = 2.5 + Math.sin(t * 2) * 0.2;
+      this.meetingBubble.position.y = MEETING_ANCHOR.y + fy + Math.sin(t * 2) * 0.2;
     }
 
     if (this.meetingTimer !== null) {
@@ -124,11 +136,11 @@ export class AgentController {
       if (path && path.length > 0) {
         const target = path[0];
         const pos = avatar.position;
-        const dir = new THREE.Vector3(target.x - pos.x, 0, target.z - pos.z);
+        const dir = this._dir.set(target.x - pos.x, 0, target.z - pos.z);
         const dist = dir.length();
-        
+
         if (dist < 0.5) {
-          path.shift(); 
+          path.shift();
           if (path.length === 0) {
             this.agentPaths.delete(item.id);
             const targetKey = this.agentWalkTargets.get(item.id);
@@ -143,8 +155,8 @@ export class AgentController {
               }
               this.updateAgentStatus(item.id, 'idle', callbacks);
             } else if (targetKey === 'meeting_table') {
-              this.updateAgentStatus(item.id, 'waiting', callbacks); 
-              avatar.rotation.y = Math.atan2(15 - avatar.position.x, 11 - avatar.position.z); 
+              this.updateAgentStatus(item.id, 'waiting', callbacks);
+              avatar.rotation.y = Math.atan2(MEETING_ANCHOR.x - avatar.position.x, MEETING_ANCHOR.z - avatar.position.z);
 
               const allArrived = this.meetingAgents.every(id => {
                 const agentItem = this.placedItems.find(i => i.id === id);
@@ -152,25 +164,24 @@ export class AgentController {
               });
 
               if (allArrived && this.meetingTimer === null && this.meetingAgents.length > 0) {
-                this.meetingTimer = 6.0; 
+                this.meetingTimer = 6.0;
               }
             } else {
-              this.updateAgentStatus(item.id, 'working', callbacks); 
+              this.updateAgentStatus(item.id, 'working', callbacks);
             }
           }
         } else {
           dir.normalize();
-          const speed = 3.0 * dt; 
+          const speed = WALK_SPEED * dt;
           avatar.position.x += dir.x * speed;
           avatar.position.z += dir.z * speed;
-          const angle = Math.atan2(dir.x, dir.z);
-          avatar.rotation.y = angle;
+          avatar.rotation.y = Math.atan2(dir.x, dir.z);
         }
       }
 
-      // Animations
+      // Animation states (all grounded on this.floorY)
       if (item.status === 'walking') {
-        avatar.position.y = 0.1 + Math.abs(Math.sin(t * 8)) * 0.05;
+        avatar.position.y = fy + 0.1 + Math.abs(Math.sin(t * 8)) * 0.05;
         lArm.rotation.x = Math.sin(t * 8) * 0.5;
         rArm.rotation.x = -Math.sin(t * 8) * 0.5;
         if (head) head.rotation.x = 0;
@@ -179,21 +190,21 @@ export class AgentController {
         rArm.rotation.x = Math.sin(t * 12 + Math.PI / 3) * 0.4 - 1.2;
         if (head) head.rotation.x = -0.2;
       } else if (item.status === 'waiting') {
-        lArm.rotation.x = 0; rArm.rotation.x = 0; 
+        lArm.rotation.x = 0; rArm.rotation.x = 0;
         if (head) head.rotation.x = 0;
-        avatar.position.y = 0.1 + Math.sin(t * 1.5) * 0.02;
+        avatar.position.y = fy + 0.1 + Math.sin(t * 1.5) * 0.02;
       } else if (item.status === 'error') {
-        lArm.rotation.x = 0; rArm.rotation.x = 0; 
+        lArm.rotation.x = 0; rArm.rotation.x = 0;
         if (head) head.rotation.x = 0;
         avatar.position.x += Math.sin(t * 40) * 0.02;
       } else if (item.status === 'celebrate') {
         lArm.rotation.x = -2.5; rArm.rotation.x = -2.5;
         if (head) head.rotation.x = 0;
-        avatar.position.y = 0.1 + Math.abs(Math.sin(t * 6)) * 0.15;
+        avatar.position.y = fy + 0.1 + Math.abs(Math.sin(t * 6)) * 0.15;
       } else {
-        lArm.rotation.x = -1.2; rArm.rotation.x = -1.2; 
+        lArm.rotation.x = -1.2; rArm.rotation.x = -1.2;
         if (head) head.rotation.x = 0;
-        avatar.position.y = 0.1 + Math.sin(t * 2) * 0.01;
+        avatar.position.y = fy + 0.1 + Math.sin(t * 2) * 0.01;
       }
     });
   }
