@@ -114,15 +114,16 @@ window.atelierEngine.debugRooms()
 
 ## 🗺️ Roadmap
 
-### ✅ Completed (Phases 0 - 11.5)
+### ✅ Completed (Phases 0 - 12)
 *   Core AI OS, LangGraph DAG decomposition, Docker Micro-VMs, HITL Security.
 *   Procedural & GLB Building Loaders with Meshopt compression.
 *   V2 PBR Material Theme (Name-based + Bounding Box Heuristics).
 *   Workstation Registry (Auto-assigning agents to GLB desks).
 *   Room Zoning, Spatial Calibration, and Floor-Height Syncing.
+*   RoomFurnisher for automated room-based furniture placement.
+*   Dynamic canvas textures and real-time DAG visualization.
 
 ### 🚧 Up Next
-*   **Phase 12: Dynamic Model Router:** Integrate `litellm` to score task complexity and route to appropriate models (e.g., Opus for architecture, Haiku for formatting). Track live Token Burn Rate in the 3D HUD.
 *   **Phase 13: Real CLI Adapters:** Replace mock sandbox commands with actual `Bun.spawn(['opencode', 'run', prompt])` or `claude` CLI calls to execute real-world coding tasks.
 *   **Phase 14: Navmesh Pathfinding:** Migrate from BFS waypoint graphs to `@recast-navigation/three` for true obstacle-avoiding crowd simulation.
 
