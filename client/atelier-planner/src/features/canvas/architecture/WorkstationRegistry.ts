@@ -4,7 +4,9 @@ export interface WorkstationAnchor {
   id: string;
   position: THREE.Vector3;
   occupied: boolean;
-  manual?: boolean; // true = placed by the CEO in Customize Mode
+  manual?: boolean;
+  rotY?: number;
+  deskItemId?: string; // Links to the placedItem ID of the desk
 }
 
 export class WorkstationRegistry {
@@ -20,9 +22,7 @@ export class WorkstationRegistry {
       if (!mesh.isMesh) return;
       const name = (mesh.name || '').toLowerCase();
 
-      // Strategy 1: name-based (desks only — chairs would double-count stations)
       const isDeskName = /desk|workstation|console/.test(name);
-      // Strategy 2: geometric fallback (flat surface at desk height)
       let isDeskShape = false;
       if (!isDeskName) {
         _box.setFromObject(mesh);
@@ -33,7 +33,7 @@ export class WorkstationRegistry {
 
       const position = new THREE.Vector3();
       mesh.getWorldPosition(position);
-      if (this.tooClose(position)) return; // dedupe desk parts / adjacent chairs
+      if (this.tooClose(position)) return;
 
       this.anchors.push({
         id: `glb_${this.anchors.length}_${position.x.toFixed(1)}_${position.z.toFixed(1)}`,
@@ -41,25 +41,18 @@ export class WorkstationRegistry {
         occupied: false,
       });
     });
-
-    console.log(`[WorkstationRegistry] Discovered ${this.anchors.length} GLB workstations.`);
   }
 
   private tooClose(p: THREE.Vector3, minDist = 1.4): boolean {
     return this.anchors.some(a => a.position.distanceTo(p) < minDist);
   }
 
-  /** CEO places a workstation_set in Customize Mode → becomes a hireable anchor. */
-  registerManualWorkstation(position: THREE.Vector3): string {
+  registerManualWorkstation(position: THREE.Vector3, rotY = 0, deskItemId?: string): string {
     const id = `manual_${this.anchors.length}_${position.x.toFixed(1)}_${position.z.toFixed(1)}`;
-    this.anchors.push({ id, position: position.clone(), occupied: false, manual: true });
+    this.anchors.push({ id, position: position.clone(), occupied: false, manual: true, rotY, deskItemId });
     return id;
   }
 
-  /**
-   * FIX: Array.find() returns T | undefined, but our contract is T | null.
-   * Explicitly return null when nothing is free so TypeScript is happy.
-   */
   getAvailableWorkstation(): WorkstationAnchor | null {
     const available = this.anchors.find(a => !a.occupied);
     if (available) {
@@ -74,12 +67,9 @@ export class WorkstationRegistry {
     if (anchor) anchor.occupied = false;
   }
 
-  /** Fired when the CEO deletes a manually placed workstation. */
   removeWorkstation(id: string): void {
     this.anchors = this.anchors.filter(a => !(a.id === id && !a.occupied));
   }
 
-  getAllAnchors(): WorkstationAnchor[] {
-    return [...this.anchors];
-  }
+  getAllAnchors(): WorkstationAnchor[] { return [...this.anchors]; }
 }

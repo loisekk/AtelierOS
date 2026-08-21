@@ -3,10 +3,11 @@ import { ROOM_LABELS } from './SpatialConfig';
 
 function createLabelTexture(text: string, subtext: string, accent: string): THREE.Texture {
   const canvas = document.createElement('canvas');
-  canvas.width = 512; canvas.height = 200;
+  canvas.width = 512;
+  canvas.height = 200;
   const ctx = canvas.getContext('2d')!;
 
-  ctx.fillStyle = 'rgba(245, 232, 214, 0.97)';                       // warm cream panel
+  ctx.fillStyle = 'rgba(245, 232, 214, 0.97)';
   ctx.beginPath(); ctx.roundRect(8, 8, 496, 184, 22); ctx.fill();
   ctx.strokeStyle = '#D7C2A8'; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.roundRect(8, 8, 496, 184, 22); ctx.stroke();
@@ -24,11 +25,19 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
   return texture;
 }
 
-export function addRoomLabels(scene: THREE.Scene) {
+/**
+ * baseY = WORLD.floorY. The label's Y position from config is added to this.
+ */
+export function addRoomLabels(scene: THREE.Scene, baseY: number) {
   ROOM_LABELS.forEach(label => {
-    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: createLabelTexture(label.text, label.sub, label.accent), transparent: true, depthWrite: false }));
-    sprite.position.set(...label.pos);
-    sprite.scale.set(4.8, 1.9, 1);
+    const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ 
+      map: createLabelTexture(label.text, label.sub, label.accent), 
+      transparent: true, 
+      depthWrite: false 
+    }));
+    // Use the Y from config directly, added to the floor height
+    sprite.position.set(label.pos[0], baseY + label.pos[1], label.pos[2]);
+    sprite.scale.set(5, 2, 1);
     scene.add(sprite);
   });
 }

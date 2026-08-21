@@ -1,34 +1,53 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
-import { applyMaterialTheme, AtelierWarmMaterials } from './MaterialTheme';
+import { applyMaterialTheme } from './MaterialTheme';
+import { WORLD } from './SpatialConfig';
 
 /**
- * Finds the real interior walking-surface height.
- * After applyMaterialTheme, floor meshes SHARE the exact floor material instance,
- * so we detect them by identity and take the top of the largest slab.
+ * Shoots multiple rays from the sky down through the building.
+ * Examines ALL intersections to find the LOWEST horizontal surface = the interior floor.
  */
 function detectFloorHeight(model: THREE.Object3D): number {
-  let bestArea = 0;
-  let floorY = 0;
-  const box = new THREE.Box3();
-  const size = new THREE.Vector3();
-
-  model.traverse(nd => {
-    const m = nd as THREE.Mesh;
-    if (!m.isMesh) return;
-    if (m.material === AtelierWarmMaterials.floor || m.material === AtelierWarmMaterials.floorDark) {
-      box.setFromObject(m);
-      box.getSize(size);
-      const area = size.x * size.z;
-      if (area > bestArea) {
-        bestArea = area;
-        floorY = box.max.y; // top surface = where furniture & agents stand
+  const box = new THREE.Box3().setFromObject(model);
+  const size = box.getSize(new THREE.Vector3());
+  const center = box.getCenter(new THREE.Vector3());
+  
+  const meshes: THREE.Mesh[] = [];
+  model.traverse((node) => {
+    if ((node as THREE.Mesh).isMesh) meshes.push(node as THREE.Mesh);
+  });
+  
+  const rayPositions = [
+    new THREE.Vector3(center.x, box.max.y + 10, center.z),
+    new THREE.Vector3(center.x + 5, box.max.y + 10, center.z + 5),
+    new THREE.Vector3(center.x - 5, box.max.y + 10, center.z - 5),
+    new THREE.Vector3(center.x + 5, box.max.y + 10, center.z - 5),
+    new THREE.Vector3(center.x - 5, box.max.y + 10, center.z + 5),
+  ];
+  
+  let lowestFloorY = Infinity;
+  
+  for (const rayPos of rayPositions) {
+    const raycaster = new THREE.Raycaster(rayPos, new THREE.Vector3(0, -1, 0));
+    const intersects = raycaster.intersectObjects(meshes, false);
+    
+    for (const intersect of intersects) {
+      // FIX: Changed > 0.1 to >= 0 so we don't skip floors located exactly at Y=0
+      if (intersect.point.y >= 0 && intersect.point.y < lowestFloorY) {
+        lowestFloorY = intersect.point.y;
       }
     }
-  });
-
-  return floorY;
+  }
+  
+  if (lowestFloorY !== Infinity) {
+    console.log(`🎯 Multi-raycast floor detection found Y: ${lowestFloorY.toFixed(3)}`);
+    return lowestFloorY;
+  }
+  
+  const fallbackY = size.y * 0.2;
+  console.warn(`⚠️ Raycast failed, using fallback Y: ${fallbackY.toFixed(3)}`);
+  return fallbackY;
 }
 
 export async function loadBuildingGLB(url: string): Promise<THREE.Group> {
@@ -57,13 +76,15 @@ export async function loadBuildingGLB(url: string): Promise<THREE.Group> {
         model.position.z -= scaledCenter.z;
         model.position.y -= scaledBox.min.y;
 
-        // 4. Apply Warm PBR Material Theme (name classify + bbox fallback)
+        // 4. Apply Warm PBR Material Theme
         applyMaterialTheme(model);
 
-        // 5. Detect the interior floor height for placement & walking
-        const floorY = detectFloorHeight(model);
-        model.userData.floorY = floorY;
-        console.log(`🏗️ Building loaded. Interior floor height: ${floorY.toFixed(3)}`);
+        // 5. Detect the interior floor height using Multi-Raycast
+        const detectedY = detectFloorHeight(model);
+        WORLD.floorY = detectedY;
+        model.userData.floorY = detectedY;
+        
+        console.log(`🏗️ Building loaded. Interior floor height detected: ${detectedY.toFixed(3)}`);
 
         resolve(model);
       },
