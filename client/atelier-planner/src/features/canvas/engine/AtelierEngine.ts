@@ -9,9 +9,12 @@ import { loadBuildingGLB } from '../architecture/BuildingLoader';
 import { BOUNDS, BRAIN_FALLBACK, CAMERA_RIGS, EGRESS_POINTS, MEETING_ANCHOR, V, WORLD } from '../architecture/SpatialConfig';
 import { WorkstationRegistry } from '../architecture/WorkstationRegistry';
 import { debugDrawZones } from '../architecture/RoomScanner';
-import { getAutoLayout } from '../architecture/RoomFurnisher';
+import { getAutoLayout, getLayoutStats, DEFAULT_OFFICE_LAYOUT_VERSION } from '../architecture/RoomFurnisher';
+import type { LayoutPreset } from '../architecture/RoomFurnisher';
+import { buildObjectRegistry, validatePlacedItems, generateRoomStats, exportLayoutToFile } from '../architecture/ObjectRegistry';
 import { ScreenManager } from './ScreenManager';
 import { AgentController } from './AgentController';
+import type { DagStep } from './ScreenManager';
 
 interface EngineCallbacks {
   onStatsUpdate: (items: PlacedItemMeta[]) => void;
@@ -36,8 +39,10 @@ export class AtelierEngine {
   private egressGroup: THREE.Group | null = null;
   private egressArrows: THREE.Mesh[] = [];
   private ghostItem: THREE.Group | null = null;
+  private ghostRotY = 0;
   private zoneDebug: THREE.Group | null = null;
-  private buildingTopY = 6;
+  private anchorDebug: THREE.Group | null = null;
+  private validationDebug: THREE.Group | null = null;
 
   public placedItems: PlacedItemMeta[] = [];
   private meshes = new Map<string, THREE.Group>();
@@ -49,12 +54,13 @@ export class AtelierEngine {
   private brandColor = '#B96D3D';
   private history: { type: 'place' | 'delete'; item: PlacedItemMeta }[] = [];
   private _autoFurnishing = false;
-  public customizing = false; // NEW: Locks furniture by default
+  public customizing = false;
 
   public selectedItemType: string | null = null;
   public view: 'office' | 'ceo' | 'command' | 'knowledge' | 'top' = 'office';
   private callbacks: EngineCallbacks;
 
+  private brainGroup: THREE.Group | null = null;
   private brainCore: THREE.Mesh | null = null;
   private brainParticles: THREE.Points | null = null;
   private brainLight: THREE.PointLight | null = null;
@@ -66,10 +72,15 @@ export class AtelierEngine {
   private agentController: AgentController;
   private workstationRegistry: WorkstationRegistry | null = null;
 
+  /** Active canonical layout preset (v3.2 layout system). */
+  public layoutPreset: LayoutPreset = 'standard';
+
   private animFrameId = 0;
   private onPointerDown!: (e: PointerEvent) => void;
   private onPointerMove!: (e: PointerEvent) => void;
   private onPointerUp!: (e: PointerEvent) => void;
+  private onWheel!: (e: WheelEvent) => void;
+  private onKeyDown!: (e: KeyboardEvent) => void;
 
   calibrationActive = false;
   private calibQueue: string[] = [];
@@ -161,12 +172,8 @@ export class AtelierEngine {
       console.log(`🏗️ Interior floor height synced: ${WORLD.floorY.toFixed(3)}`);
 
       this.workstationRegistry = new WorkstationRegistry(building);
-
       this.autoFurnish();
-
-      // FIX: Pass WORLD.floorY directly. roomLabels.ts will add the config Y offset.
       addRoomLabels(this.scene, WORLD.floorY);
-
       this.initBrain(this.detectBrainAnchor(building));
       this.screenManager.createDAGScreen(this.scene, MEETING_ANCHOR);
     }).catch(err => console.error("Failed to load building GLB", err));
@@ -180,6 +187,26 @@ export class AtelierEngine {
     this.animate();
   }
 
+  /**
+   * Dispose an object subtree. Geometry ALWAYS (fresh per factory call — safe).
+   * Materials ONLY when disposeMaterials=true — catalog furniture shares
+   * module-level materials (oakMat, screenGlowMat…), disposing those would
+   * break every future placement. Per-instance materials (brain, debug
+   * markers, ghost clones) are safe to dispose.
+   */
+  private disposeObject(root: THREE.Object3D, disposeMaterials = false) {
+    root.traverse(c => {
+      if (c instanceof THREE.Mesh || c instanceof THREE.Points) {
+        c.geometry?.dispose();
+        if (disposeMaterials) {
+          const mat = c.material as THREE.Material | THREE.Material[];
+          const mats = Array.isArray(mat) ? mat : [mat];
+          mats.forEach(m => m?.dispose());
+        }
+      }
+    });
+  }
+
   private clampX = (x: number) => Math.max(BOUNDS.minX, Math.min(BOUNDS.maxX, x));
   private clampZ = (z: number) => Math.max(BOUNDS.minZ, Math.min(BOUNDS.maxZ, z));
 
@@ -187,7 +214,6 @@ export class AtelierEngine {
     const box = new THREE.Box3().setFromObject(building);
     const center = box.getCenter(new THREE.Vector3());
     const size = box.getSize(new THREE.Vector3());
-    this.buildingTopY = size.y;
 
     this.controls.target.copy(center);
 
@@ -203,10 +229,11 @@ export class AtelierEngine {
     this.plinth.position.set(center.x, -0.5, center.z);
   }
 
-  private autoFurnish() {
+  private autoFurnish(preset: LayoutPreset = this.layoutPreset) {
     if (!this.workstationRegistry) return;
     this._autoFurnishing = true;
-    const layout = getAutoLayout();
+    this.layoutPreset = preset;
+    const layout = getAutoLayout(preset);
     layout.forEach(entry => {
       const placedId = this.placeItem(entry.type, new THREE.Vector3(entry.x, WORLD.floorY, entry.z), entry.r ?? 0, undefined, entry.dy ?? 0);
       if (entry.ws) {
@@ -215,7 +242,196 @@ export class AtelierEngine {
     });
     this._autoFurnishing = false;
     this.history = [];
-    console.log(`🪑 Auto-furnished ${layout.length} items across all rooms.`);
+    const wsCount = layout.filter(e => e.ws).length;
+    console.log(`🪑 Auto-furnished ${layout.length} items · ${wsCount} screen-linked desks (canonical v${DEFAULT_OFFICE_LAYOUT_VERSION}, preset '${preset}').`);
+  }
+
+  // ── RESET OFFICE: restore the canonical default layout ──
+  // No arg → resets to the CURRENT preset. Pass a preset to switch:
+  //   window.atelierEngine.resetOffice('dense')
+  public resetOffice(preset: LayoutPreset = this.layoutPreset) {
+    this.clearAll();
+    if (this.brainGroup) {
+      this.disposeObject(this.brainGroup, true); // brain materials are per-instance — safe
+      this.scene.remove(this.brainGroup);
+      this.brainGroup = null;
+      this.brainCore = null;
+      this.brainParticles = null;
+      this.brainLight = null;
+    }
+    this.workstationRegistry = new WorkstationRegistry(this.buildingRoot);
+    this.autoFurnish(preset);
+    this.initBrain(this.detectBrainAnchor(this.buildingRoot));
+    this.validateLayout();
+    console.log(`🔄 Office reset to canonical default layout v${DEFAULT_OFFICE_LAYOUT_VERSION} (preset: ${preset})`);
+  }
+
+  /** Switch layout preset live and rebuild: 'standard' | 'dense' | 'sparse' */
+  public setPreset(preset: LayoutPreset) {
+    console.log(`🎚️ Switching layout preset → '${preset}'`);
+    this.resetOffice(preset);
+  }
+
+  /** Per-room canonical census from the v3.2 layout system (pure data). */
+  public showCanonicalCensus(): void {
+    const stats = getLayoutStats(this.layoutPreset);
+    let total = 0, wsTotal = 0;
+    console.log(`%c[Canonical Census — v${DEFAULT_OFFICE_LAYOUT_VERSION}, preset '${this.layoutPreset}']`, 'color:#1976D2;font-weight:bold;font-size:14px');
+    console.table(Object.entries(stats).map(([room, s]) => {
+      total += s.count; wsTotal += s.ws;
+      return {
+        Room: room,
+        Items: s.count,
+        Workstations: s.ws,
+        Types: Object.entries(s.types).map(([t, n]) => `${t}×${n}`).join(', '),
+      };
+    }));
+    console.log(`TOTAL: ${total} items · ${wsTotal} screen-linked workstations`);
+  }
+
+  // ── ENHANCED: Dump object registry with summary ──
+  public dumpObjectRegistry() {
+    const reg = buildObjectRegistry(this.buildingRoot);
+    const summary = {
+      total: reg.length,
+      structural: reg.filter(o => o.structural).length,
+      furniture: reg.filter(o => o.category === 'FURNITURE').length,
+      technology: reg.filter(o => o.category === 'TECHNOLOGY').length,
+      decoration: reg.filter(o => o.category === 'DECORATION').length,
+    };
+
+    console.log(`📦 Object inventory: ${summary.total} meshes`);
+    console.table(summary);
+
+    const json = JSON.stringify(reg, null, 2);
+    navigator.clipboard.writeText(json).catch(() => {});
+    console.log('%c📋 Full JSON copied to clipboard', 'color:#2E7D32;font-weight:bold');
+
+    return reg;
+  }
+
+  // ── ENHANCED: Validate with visual feedback. Now RETURNS the report. ──
+  public validateLayout(showVisual = true) {
+    const results = validatePlacedItems(this.placedItems);
+
+    const okCount = results.filter(r => r.level === 'OK').length;
+    const warnCount = results.filter(r => r.level === 'WARNING').length;
+    const errCount = results.filter(r => r.level === 'ERROR').length;
+
+    console.log(`[Layout Validation] ✓ ${okCount} OK · ⚠ ${warnCount} Warnings · ✗ ${errCount} Errors`);
+    results.forEach(r => {
+      const icon = r.level === 'OK' ? '✓' : r.level === 'WARNING' ? '⚠' : '✗';
+      const color = r.level === 'OK' ? '#2E7D32' : r.level === 'WARNING' ? '#F57C00' : '#D32F2F';
+      console.log(`%c${icon} ${r.message}`, `color:${color}`);
+    });
+
+    if (showVisual) {
+      if (this.validationDebug) {
+        this.disposeObject(this.validationDebug, true);
+        this.scene.remove(this.validationDebug);
+        this.validationDebug = null;
+      }
+
+      const group = new THREE.Group();
+      results.filter(r => r.level !== 'OK' && r.position).forEach(r => {
+        const color = r.level === 'WARNING' ? 0xF57C00 : 0xD32F2F;
+        const sphere = new THREE.Mesh(
+          new THREE.SphereGeometry(0.15, 12, 12),
+          new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 })
+        );
+        sphere.position.set(r.position!.x, WORLD.floorY + 2.0, r.position!.z);
+        group.add(sphere);
+      });
+
+      this.scene.add(group);
+      this.validationDebug = group;
+
+      if (warnCount + errCount > 0) {
+        console.log(`🔴 Visual markers added at ${warnCount + errCount} problem locations`);
+        console.log('Run window.atelierEngine.hideValidation() to remove markers');
+      }
+    }
+
+    return { ok: okCount, warnings: warnCount, errors: errCount, results };
+  }
+
+  public hideValidation(): void {
+    if (this.validationDebug) {
+      this.disposeObject(this.validationDebug, true);
+      this.scene.remove(this.validationDebug);
+      this.validationDebug = null;
+      console.log('🔵 Validation markers removed');
+    }
+  }
+
+  // ── Room statistics dashboard (placed items) ──
+  public showRoomStats(): void {
+    const stats = generateRoomStats(this.placedItems);
+
+    console.log('%c[Room Statistics]', 'color:#1976D2;font-weight:bold;font-size:14px');
+    console.table(stats.map(s => ({
+      Room: s.label,
+      Items: s.itemCount,
+      Workstations: s.workstationCount,
+      'Area (m²)': s.area,
+      'Density (items/10m²)': s.density,
+    })));
+  }
+
+  // ── Export layout to file ──
+  public exportLayout(): void {
+    const layout = this.placedItems.map(item => ({
+      type: item.type,
+      position: item.position,
+      rotation: item.rotation,
+      role: item.role,
+    }));
+
+    exportLayoutToFile(layout, 'atelier-office-layout');
+    console.log('💾 Layout exported to file');
+  }
+
+  // ── ENHANCED: Show all anchors (workstations + brain + all furniture) ──
+  public showDefaultAnchors(showAll = false): void {
+    if (this.anchorDebug) {
+      this.disposeObject(this.anchorDebug, true);
+      this.scene.remove(this.anchorDebug);
+      this.anchorDebug = null;
+      console.log('🧭 Anchors hidden');
+      return;
+    }
+
+    const g = new THREE.Group();
+
+    // Workstation anchors (green cones)
+    const wsMat = new THREE.MeshBasicMaterial({ color: 0x059669 });
+    this.workstationRegistry?.getAllAnchors().forEach(a => {
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.15, 0.45, 8), wsMat);
+      cone.position.set(a.position.x, WORLD.floorY + 0.25, a.position.z);
+      g.add(cone);
+    });
+
+    // Brain anchor (purple sphere)
+    const brain = new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 12), new THREE.MeshBasicMaterial({ color: 0xA56BFF }));
+    brain.position.copy(this.brainAnchor);
+    g.add(brain);
+
+    // All placed items (if showAll=true)
+    if (showAll) {
+      const itemMat = new THREE.MeshBasicMaterial({ color: 0xFFA726, transparent: true, opacity: 0.6 });
+      this.placedItems.forEach(item => {
+        const sphere = new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), itemMat);
+        sphere.position.set(item.position.x, WORLD.floorY + 1.5, item.position.z);
+        g.add(sphere);
+      });
+    }
+
+    this.scene.add(g);
+    this.anchorDebug = g;
+
+    const wsCount = this.workstationRegistry?.getAllAnchors().length || 0;
+    console.log(`🧭 Anchors visible: ${wsCount} workstations (green), 1 brain (purple)${showAll ? `, ${this.placedItems.length} items (orange)` : ''}`);
+    console.log('Run window.atelierEngine.showDefaultAnchors() again to hide');
   }
 
   public logCameraPosition() {
@@ -229,14 +445,8 @@ export class AtelierEngine {
 
   public debugRooms() {
     if (this.zoneDebug) {
+      this.disposeObject(this.zoneDebug, true);
       this.scene.remove(this.zoneDebug);
-      this.zoneDebug.traverse(c => {
-        const m = c as THREE.Mesh;
-        if ((m as any).isMesh) {
-          m.geometry?.dispose();
-          (m.material as THREE.Material).dispose();
-        }
-      });
       this.zoneDebug = null;
       console.log('🗺️ Room zones removed');
       return;
@@ -244,11 +454,33 @@ export class AtelierEngine {
     this.zoneDebug = debugDrawZones(this.scene);
   }
 
+  public calibrateBrain() {
+    console.log('%c🧠 [BRAIN CALIB] Click the CENTER of the circular chamber...', 'color:#A56BFF;font-weight:bold;font-size:14px');
+    const onClick = (e: MouseEvent) => {
+      const r = this.renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+      const ray = new THREE.Raycaster();
+      ray.setFromCamera(ndc, this.camera);
+      const hit = ray.intersectObjects(this.buildingRoot.children, true)[0];
+      if (!hit) return;
+      this.setBrainCenter(hit.point.x, hit.point.z);
+      console.log(`🧠 Brain centered at (${hit.point.x.toFixed(2)}, ${hit.point.z.toFixed(2)}).`);
+    };
+    this.renderer.domElement.addEventListener('click', onClick, { once: true });
+  }
+
+  public setBrainCenter(x: number, z: number) {
+    if (this.brainGroup) this.brainGroup.position.set(x, WORLD.floorY, z);
+    this.brainAnchor.set(x, WORLD.floorY + 2.4, z);
+    this.brainAccentLight.position.set(x, WORLD.floorY + 3.9, z);
+    this.screenManager.positionHUD(new THREE.Vector3(x, WORLD.floorY + 2.4, z));
+  }
+
   private detectBrainAnchor(root: THREE.Object3D): THREE.Vector3 | null {
     const acc = new THREE.Vector3(); let n = 0;
     root.updateMatrixWorld(true);
     root.traverse(nd => {
-      if ((nd as THREE.Mesh).isMesh && /brain|neuron|neural|core_/i.test(nd.name)) {
+      if (nd instanceof THREE.Mesh && /brain|neuron|neural|core_/i.test(nd.name)) {
         acc.add(new THREE.Vector3().setFromMatrixPosition(nd.matrixWorld)); n++;
       }
     });
@@ -256,18 +488,21 @@ export class AtelierEngine {
   }
 
   private initBrain(anchor: THREE.Vector3 | null) {
-    const p = this.brainAnchor = anchor ?? BRAIN_FALLBACK.clone();
-    this.brainAccentLight.position.copy(p); this.brainAccentLight.position.y += 1.5;
+    const src = anchor ?? BRAIN_FALLBACK;
+    const g = this.brainGroup = new THREE.Group();
+    g.position.set(src.x, WORLD.floorY, src.z);
+
+    this.brainAccentLight.position.set(src.x, WORLD.floorY + 3.9, src.z);
 
     const platform = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x554039, roughness: 0.6 }));
-    platform.position.set(p.x, WORLD.floorY + 0.15, p.z);
+    platform.position.set(0, 0.15, 0);
     platform.receiveShadow = true;
-    this.scene.add(platform);
+    g.add(platform);
 
     const ring = new THREE.Mesh(new THREE.TorusGeometry(2.6, 0.06, 12, 48), new THREE.MeshStandardMaterial({ color: 0xA56BFF, emissive: 0xA56BFF, emissiveIntensity: 1.2 }));
     ring.rotation.x = Math.PI / 2;
-    ring.position.set(p.x, WORLD.floorY + 1.4, p.z);
-    this.scene.add(ring);
+    ring.position.set(0, 1.4, 0);
+    g.add(ring);
 
     if (!anchor) {
       const geometry = new THREE.IcosahedronGeometry(2.0, 5);
@@ -280,9 +515,9 @@ export class AtelierEngine {
       }
       geometry.computeVertexNormals();
       this.brainCore = new THREE.Mesh(geometry, new THREE.MeshStandardMaterial({ color: 0x4c1d95, emissive: 0x7C3AED, emissiveIntensity: 1.2, roughness: 0.2, metalness: 0.3 }));
-      this.brainCore.position.copy(p); this.brainCore.position.y = WORLD.floorY + 2.4;
+      this.brainCore.position.set(0, 2.4, 0);
       this.brainCore.castShadow = true;
-      this.scene.add(this.brainCore);
+      g.add(this.brainCore);
       const wireframe = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ color: 0x0EA5E9, wireframe: true, transparent: true, opacity: 0.5 }));
       this.brainCore.add(wireframe);
     }
@@ -292,17 +527,20 @@ export class AtelierEngine {
     for (let i = 0; i < posArray.length; i++) posArray[i] = (Math.random() - 0.5) * 6;
     particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     this.brainParticles = new THREE.Points(particleGeo, new THREE.PointsMaterial({ color: 0xC494FF, size: 0.08, transparent: true, opacity: 0.7 }));
-    this.brainParticles.position.copy(p); this.brainParticles.position.y = WORLD.floorY + 2.4;
-    this.scene.add(this.brainParticles);
+    this.brainParticles.position.set(0, 2.4, 0);
+    g.add(this.brainParticles);
 
+    // Quirk #1 fix preserved: brainLight is a real PointLight (null-guarded in animate).
     this.brainLight = new THREE.PointLight(0x7C3AED, 3, 15);
-    this.brainLight.position.copy(p); this.brainLight.position.y = WORLD.floorY + 2.4;
-    this.scene.add(this.brainLight);
+    this.brainLight.position.set(0, 2.4, 0);
+    g.add(this.brainLight);
 
-    this.screenManager.positionHUD(p);
+    this.scene.add(g);
+    this.brainAnchor = new THREE.Vector3(src.x, WORLD.floorY + 2.4, src.z);
+    this.screenManager.positionHUD(new THREE.Vector3(src.x, WORLD.floorY + 2.4, src.z));
   }
 
-  public updateDAG(steps: any[]) { this.screenManager.updateDAG(this.scene, steps); }
+  public updateDAG(steps: DagStep[]) { this.screenManager.updateDAG(this.scene, steps); }
   public updateAgentLog(agentId: string, log: string) {
     const mesh = this.meshes.get(agentId); if (mesh) this.screenManager.updateAgentLog(mesh, log);
   }
@@ -314,7 +552,6 @@ export class AtelierEngine {
     if (this.selectedId === id) this.setSelected(id);
   }
 
-  // NEW: Toggle Customize Mode
   public setCustomizing(mode: boolean) {
     this.customizing = mode;
     if (!mode) this.setSelected(null);
@@ -340,15 +577,21 @@ export class AtelierEngine {
 
   public setSelectedItemType(type: string | null) {
     this.selectedItemType = type;
+    this.ghostRotY = 0;
+    this.controls.enableZoom = !type;
     if (type) this.setSelected(null);
-    if (this.ghostItem) { this.scene.remove(this.ghostItem); this.ghostItem = null; }
+    if (this.ghostItem) {
+      this.disposeObject(this.ghostItem, true); // ghost materials are clones — safe
+      this.scene.remove(this.ghostItem);
+      this.ghostItem = null;
+    }
   }
 
   private getMouseIntersection(e: MouseEvent) {
     const rect = this.renderer.domElement.getBoundingClientRect();
     this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-    this.raycaster.setFromCamera(this.mouse, this.activeCamera as THREE.PerspectiveCamera);
+    this.raycaster.setFromCamera(this.mouse, this.activeCamera);
     return this.raycaster.intersectObject(this.floor)[0];
   }
 
@@ -364,19 +607,17 @@ export class AtelierEngine {
       const rect = this.renderer.domElement.getBoundingClientRect();
       this.mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       this.mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
-      this.raycaster.setFromCamera(this.mouse, this.activeCamera as THREE.PerspectiveCamera);
+      this.raycaster.setFromCamera(this.mouse, this.activeCamera);
 
       const hits = this.raycaster.intersectObjects(Array.from(this.meshes.values()), true);
       if (hits.length > 0) {
         let n: THREE.Object3D | null = hits[0].object;
         while (n) {
           if (n.userData.placedId) {
-            // NEW: If furniture is fixed and we aren't customizing, ignore click
             if (n.userData.fixed && !this.customizing) break;
-
             if (this.selectedId === n.userData.placedId) this.setSelected(null);
             else { this.setSelected(n.userData.placedId); this.draggingId = n.userData.placedId; }
-            break; 
+            break;
           }
           n = n.parent;
         }
@@ -427,6 +668,7 @@ export class AtelierEngine {
           this.scene.add(this.ghostItem);
         }
         this.ghostItem.position.set(this.clampX(hit.point.x), WORLD.floorY, this.clampZ(hit.point.z));
+        this.ghostItem.rotation.y = this.ghostRotY;
       }
     };
 
@@ -438,20 +680,51 @@ export class AtelierEngine {
       }
       if (this.selectedItemType && !pointerMoved && pointerDownPos) {
         const hit = this.getMouseIntersection(e);
-        if (hit) this.placeItem(this.selectedItemType, hit.point);
+        if (hit) {
+          this.placeItem(this.selectedItemType, hit.point, this.ghostRotY);
+          this.ghostRotY = 0;
+        }
       }
       pointerDownPos = null;
     };
 
+    this.onWheel = (e) => {
+      if (this.selectedItemType && this.ghostItem) {
+        e.preventDefault();
+        this.ghostRotY += (e.deltaY > 0 ? -1 : 1) * (Math.PI / 12);
+        this.ghostItem.rotation.y = this.ghostRotY;
+      }
+    };
+
+    this.onKeyDown = (e) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (e.key === 'r' || e.key === 'R') {
+        if (this.ghostItem) {
+          this.ghostRotY += Math.PI / 4;
+          this.ghostItem.rotation.y = this.ghostRotY;
+        } else if (this.selectedId && this.customizing) {
+          const mesh = this.meshes.get(this.selectedId);
+          if (mesh && !mesh.userData.fixed) {
+            mesh.rotation.y += Math.PI / 4;
+            const item = this.placedItems.find(i => i.id === this.selectedId);
+            if (item) item.rotation = mesh.rotation.y;
+          }
+        }
+      }
+    };
+
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
     this.renderer.domElement.addEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.addEventListener('wheel', this.onWheel, { passive: false });
     window.addEventListener('pointerup', this.onPointerUp);
+    window.addEventListener('keydown', this.onKeyDown);
   }
 
   public placeItem(type: string, pos: THREE.Vector3, rotY = 0, config?: AgentConfig, yOffset = 0): string {
     const item = ITEM_CATALOG[type];
     let mesh = item.factory(this.brandColor);
-    const y = WORLD.floorY + yOffset; 
+    const y = WORLD.floorY + yOffset;
 
     if (item.role) {
       const anchor = this.workstationRegistry?.getAvailableWorkstation();
@@ -465,11 +738,11 @@ export class AtelierEngine {
             });
             mesh = new THREE.Group();
             const av = createAgentAvatar(this.brandColor);
-            av.position.set(0, 0.49, 0.4);
+            av.position.set(0, 0.04, 0.4);
             mesh.add(av);
             mesh.position.copy(anchor.position);
             mesh.rotation.y = anchor.rotY ?? 0;
-            mesh.userData.linkedScreens = screens; 
+            mesh.userData.linkedScreens = screens;
           }
         } else {
           mesh.position.set(anchor.position.x, y, anchor.position.z);
@@ -484,7 +757,6 @@ export class AtelierEngine {
     } else {
       mesh.position.set(this.clampX(pos.x), y, this.clampZ(pos.z));
       mesh.rotation.y = rotY;
-      // NEW: Mark as fixed if auto-furnishing
       if (this._autoFurnishing) mesh.userData.fixed = true;
     }
 
@@ -521,7 +793,7 @@ export class AtelierEngine {
     this.placedItems.push(meta);
     if (!this._autoFurnishing) this.history.push({ type: 'place', item: meta });
     this.callbacks.onStatsUpdate(this.placedItems);
-    
+
     return id;
   }
 
@@ -560,16 +832,14 @@ export class AtelierEngine {
 
   public deleteSelected() {
     if (!this.selectedId) return;
-    
-    // NEW: Prevent deletion if fixed and not customizing
     const mesh = this.meshes.get(this.selectedId);
     if (mesh?.userData.fixed && !this.customizing) {
-        console.warn("Cannot delete fixed furniture. Enter Customize Mode first.");
-        return;
+      console.warn("Cannot delete fixed furniture. Enter Customize Mode first.");
+      return;
     }
 
     const id = this.selectedId;
-    if (mesh) { this.scene.remove(mesh); this.meshes.delete(id); }
+    if (mesh) { this.disposeObject(mesh); this.scene.remove(mesh); this.meshes.delete(id); }
     this.avatars.delete(id);
     const idx = this.placedItems.findIndex(i => i.id === id);
     if (idx > -1) { this.history.push({ type: 'delete', item: this.placedItems[idx] }); this.placedItems.splice(idx, 1); }
@@ -579,7 +849,8 @@ export class AtelierEngine {
   }
 
   public clearAll() {
-    this.meshes.forEach(m => this.scene.remove(m));
+    // Geometry-only disposal: catalog materials are shared module-level — never dispose them.
+    this.meshes.forEach(m => { this.disposeObject(m); this.scene.remove(m); });
     this.meshes.clear(); this.avatars.clear();
     this.placedItems = []; this.history = [];
     this.setSelected(null); this.callbacks.onStatsUpdate(this.placedItems);
@@ -590,7 +861,7 @@ export class AtelierEngine {
     if (!last) return;
     if (last.type === 'place') {
       const mesh = this.meshes.get(last.item.id);
-      if (mesh) this.scene.remove(mesh);
+      if (mesh) { this.disposeObject(mesh); this.scene.remove(mesh); }
       this.meshes.delete(last.item.id); this.avatars.delete(last.item.id);
       this.placedItems = this.placedItems.filter(i => i.id !== last.item.id);
     } else if (last.type === 'delete') {
@@ -598,18 +869,6 @@ export class AtelierEngine {
       mesh.userData.placedId = last.item.id;
       mesh.position.set(last.item.position.x, WORLD.floorY, last.item.position.z);
       this.scene.add(mesh); this.meshes.set(last.item.id, mesh);
-      mesh.traverse(c => {
-        if (c.userData.isAvatar) this.avatars.set(last.item.id, c as THREE.Group);
-        if (c instanceof THREE.Mesh && c.userData.isScreen) {
-          if (!c.userData.screenData) {
-            const screenData = this.screenManager.createScreenTexture();
-            (c.material as THREE.MeshStandardMaterial).map = screenData.texture;
-            (c.material as THREE.MeshStandardMaterial).emissiveMap = screenData.texture;
-            (c.material as THREE.MeshStandardMaterial).needsUpdate = true;
-            c.userData.screenData = screenData;
-          }
-        }
-      });
       this.screenManager.updateAgentScreenStatus(mesh, last.item.status || 'idle');
       this.placedItems.push(last.item);
     }
@@ -664,7 +923,11 @@ export class AtelierEngine {
       }
       this.scene.add(this.egressGroup);
     } else {
-      if (this.egressGroup) { this.scene.remove(this.egressGroup); this.egressGroup = null; this.egressArrows = []; }
+      if (this.egressGroup) {
+        this.disposeObject(this.egressGroup, true);
+        this.scene.remove(this.egressGroup);
+        this.egressGroup = null; this.egressArrows = [];
+      }
     }
   }
 
@@ -749,7 +1012,7 @@ export class AtelierEngine {
 
     this.controls.update();
     this.renderer.render(this.scene, this.activeCamera);
-  }
+  };
 
   public resize() {
     const w = this.container.clientWidth;
@@ -767,21 +1030,27 @@ export class AtelierEngine {
     cancelAnimationFrame(this.animFrameId);
     this.renderer.domElement.removeEventListener('pointerdown', this.onPointerDown);
     this.renderer.domElement.removeEventListener('pointermove', this.onPointerMove);
+    this.renderer.domElement.removeEventListener('wheel', this.onWheel);
     this.renderer.domElement.removeEventListener('pointerdown', this.onCalibDown);
     this.renderer.domElement.removeEventListener('click', this.onCalibClick);
     window.removeEventListener('pointerup', this.onPointerUp);
+    window.removeEventListener('keydown', this.onKeyDown);
 
-    if (this.zoneDebug) { this.scene.remove(this.zoneDebug); this.zoneDebug = null; }
+    if (this.ghostItem) { this.disposeObject(this.ghostItem, true); this.scene.remove(this.ghostItem); this.ghostItem = null; }
+    if (this.zoneDebug) { this.disposeObject(this.zoneDebug, true); this.scene.remove(this.zoneDebug); this.zoneDebug = null; }
+    if (this.anchorDebug) { this.disposeObject(this.anchorDebug, true); this.scene.remove(this.anchorDebug); this.anchorDebug = null; }
+    if (this.validationDebug) { this.disposeObject(this.validationDebug, true); this.scene.remove(this.validationDebug); this.validationDebug = null; }
+    if (this.egressGroup) { this.disposeObject(this.egressGroup, true); this.scene.remove(this.egressGroup); this.egressGroup = null; this.egressArrows = []; }
 
     this.controls.dispose();
     this.scene.traverse(obj => {
-      const mesh = obj as THREE.Mesh;
-      if ((mesh as any).isMesh || (obj as any).isPoints || (obj as any).isSprite) {
-        mesh.geometry?.dispose();
-        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
-        mats.forEach((m: any) => {
+      if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Sprite) {
+        obj.geometry?.dispose();
+        const mat = obj.material as THREE.Material | THREE.Material[];
+        const mats = Array.isArray(mat) ? mat : [mat];
+        mats.forEach(m => {
           if (!m) return;
-          Object.values(m).forEach((v: any) => { if (v && v.isTexture) v.dispose(); });
+          Object.values(m).forEach(v => { if (v && (v as THREE.Texture).isTexture) (v as THREE.Texture).dispose(); });
           m.dispose();
         });
       }
