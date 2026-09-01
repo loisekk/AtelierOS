@@ -1,10 +1,16 @@
 import * as THREE from 'three';
 
+/** Shape of a DAG step streamed from the Cognitive Engine / App.tsx (structural match). */
+export interface DagStep {
+  role: string;
+  status: string;
+}
+
 export class ScreenManager {
-  public dagNodes: any[] = [];
+  public dagNodes: DagStep[] = [];
   public hudMesh!: THREE.Mesh;
   public hudBaseY = 5;
-  
+
   private dagMesh: THREE.Mesh | null = null;
   private hudCanvas!: HTMLCanvasElement;
   private hudCtx!: CanvasRenderingContext2D;
@@ -55,7 +61,7 @@ export class ScreenManager {
     this.drawDAGScreen(mesh, this.dagNodes);
   }
 
-  public updateDAG(scene: THREE.Scene, steps: any[]) {
+  public updateDAG(scene: THREE.Scene, steps: DagStep[]) {
     this.dagNodes = steps;
     if (this.dagMesh) { this.drawDAGScreen(this.dagMesh, steps); return; }
     scene.traverse(obj => {
@@ -63,7 +69,7 @@ export class ScreenManager {
     });
   }
 
-  private drawDAGScreen(mesh: THREE.Mesh, steps: any[]) {
+  private drawDAGScreen(mesh: THREE.Mesh, steps: DagStep[]) {
     const ctx = mesh.userData.dagCtx as CanvasRenderingContext2D;
     if (!ctx) return;
     ctx.fillStyle = '#0A0A12'; ctx.fillRect(0, 0, 1024, 512);
