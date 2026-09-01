@@ -1,5 +1,5 @@
 import type { FC } from 'react';
-import type { PlacedItemMeta, AgentStatus } from '../../ai-agents/types';
+import type { PlacedItemMeta, AgentStatus , Task } from '../../ai-agents/types';
 
 interface RightPanelProps {
   mode: 'main' | 'settings';
@@ -11,7 +11,7 @@ interface RightPanelProps {
   onStatusChange: (id: string, status: AgentStatus) => void;
   onConfigure: (id: string) => void;
   onWalkTo: (id: string, destination: string) => void;
-  tasks: any[];
+  tasks: Task[];
 }
 
 export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId, maxCapacity, roomArea, openCost, onStatusChange, onConfigure, onWalkTo, tasks }) => {
@@ -46,7 +46,7 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
               <div>
                 <div className="text-[10px] uppercase" style={{ color: 'var(--charcoal-3)' }}>Name</div>
                 <div className="text-[14px] font-semibold" style={{ color: 'var(--charcoal)' }}>{selectedEmployee.config?.name || selectedEmployee.name}</div>
-              </div>
+              </div>h
               <div>
                 <div className="text-[10px] uppercase" style={{ color: 'var(--charcoal-3)' }}>Role</div>
                 <div className="text-[13px] font-mono" style={{ color: 'var(--charcoal)' }}>{selectedEmployee.role}</div>
@@ -91,7 +91,7 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
             <div className="text-[11px] text-center py-4" style={{ color: 'var(--charcoal-3)' }}>No active tasks. Dispatch work to your team!</div>
           ) : (
             <div className="space-y-2">
-              {tasks.map((task: any) => (
+              {tasks.map((task) => (
                 <div key={task.id} className="p-2 rounded-md border" style={{ borderColor: 'var(--line-soft)', background: 'rgba(255,255,255,0.5)' }}>
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-[10px] uppercase font-semibold" style={{ color: task.status === 'running' ? 'var(--success)' : 'var(--charcoal-3)' }}>
