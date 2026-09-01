@@ -2,11 +2,11 @@ import * as THREE from 'three';
 import type { Catalog } from '../ai-agents/types';
 import { createAgentAvatar } from './factories/avatars';
 
+// Premium Architectural Materials (shared)
 const oakMat = new THREE.MeshStandardMaterial({ color: 0xE0CDA9, roughness: 0.8 });
 const whiteMat = new THREE.MeshStandardMaterial({ color: 0xFFFFFF, roughness: 0.9 });
 const darkMat = new THREE.MeshStandardMaterial({ color: 0x2A2A2A, roughness: 0.4, metalness: 0.6 });
 const metalMat = new THREE.MeshStandardMaterial({ color: 0x8A8A8A, roughness: 0.3, metalness: 0.9 });
-const screenBaseMat = new THREE.MeshStandardMaterial({ color: 0x1C1C1C, roughness: 0.2, metalness: 0.5 });
 const fabricMat = new THREE.MeshStandardMaterial({ color: 0x4A4A4A, roughness: 1.0 });
 const woodDarkMat = new THREE.MeshStandardMaterial({ color: 0x5A4030, roughness: 0.55, metalness: 0.15 });
 const tableMat = new THREE.MeshStandardMaterial({ color: 0x9A6B48, roughness: 0.6 });
@@ -14,54 +14,50 @@ const screenGlowMat = new THREE.MeshStandardMaterial({ color: 0x07131A, emissive
 const bookMats = [0x7A4636, 0x5A3B2B, 0x6E4A3A, 0x4F5B43, 0x8A6245].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85 }));
 const greenMats = [0x2F5B3A, 0x3F744A, 0x5C8B57].map(c => new THREE.MeshStandardMaterial({ color: c, roughness: 0.9 }));
 
-const box = (w: number, h: number, d: number, mat: THREE.Material, x = 0, y = 0, z = 0) => {
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, z); m.castShadow = true; m.receiveShadow = true; return m;
-};
-const cyl = (rt: number, rb: number, h: number, mat: THREE.Material, x = 0, y = 0, z = 0) => {
-  const m = new THREE.Mesh(new THREE.CylinderGeometry(rt, rb, h, 16), mat); m.position.set(x, y, z); m.castShadow = true; return m;
-};
-
 function mkChair(): THREE.Group {
   const g = new THREE.Group();
-  g.add(box(0.5, 0.08, 0.5, fabricMat, 0, 0.45, 0));
-  g.add(box(0.5, 0.6, 0.06, fabricMat, 0, 0.75, 0.22));
-  g.add(cyl(0.03, 0.03, 0.4, metalMat, 0, 0.25, 0));
-  g.add(cyl(0.2, 0.2, 0.04, metalMat, 0, 0.06, 0));
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.08, 0.5), fabricMat); seat.position.y = 0.45; seat.castShadow = true; g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.06), fabricMat); back.position.set(0, 0.75, 0.28); back.rotation.x = -0.1; back.castShadow = true; g.add(back);
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 8), metalMat); pole.position.y = 0.25; g.add(pole);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.04, 16), metalMat); base.position.y = 0.06; g.add(base);
   return g;
 }
 
-function mkMonitor(x: number, dynamic: boolean, type: 'terminal' | 'status') {
+function mkMonitor(x: number): THREE.Group {
   const g = new THREE.Group();
-  g.add(cyl(0.02, 0.02, 0.2, metalMat, x, 0.72, -0.2));
-  const s = box(0.6, 0.35, 0.02, dynamic ? screenBaseMat.clone() : screenGlowMat, x, 0.99, -0.2);
-  if (dynamic) { s.userData.isScreen = true; s.userData.screenType = type; }
-  g.add(s);
-  g.add(box(0.62, 0.37, 0.01, darkMat, x, 0.99, -0.205));
-  return g;
-}
-
-function mkPlant(scale = 1): THREE.Group {
-  const g = new THREE.Group();
-  g.add(cyl(0.22 * scale, 0.18 * scale, 0.35 * scale, whiteMat, 0, 0.175 * scale, 0));
-  const l1 = new THREE.Mesh(new THREE.ConeGeometry(0.2 * scale, 0.5 * scale, 8), greenMats[0]); l1.position.y = 0.6 * scale; l1.castShadow = true; g.add(l1);
-  const l2 = new THREE.Mesh(new THREE.ConeGeometry(0.15 * scale, 0.4 * scale, 8), greenMats[1]); l2.position.set(0.05 * scale, 0.5 * scale, 0.05 * scale); g.add(l2);
+  const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 8), metalMat); stand.position.set(x, 0.72, -0.2); g.add(stand);
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.02), screenGlowMat); screen.position.set(x, 0.99, -0.2); g.add(screen);
+  const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.37, 0.01), darkMat); bezel.position.set(x, 0.99, -0.21); g.add(bezel);
   return g;
 }
 
 function mkDeskBody(): THREE.Group {
   const g = new THREE.Group();
-  g.add(box(1.8, 0.6, 0.8, oakMat, 0, 0.3, 0));
-  g.add(box(1.82, 0.04, 0.82, whiteMat, 0, 0.62, 0));
-  [[-0.82, -0.32], [0.82, -0.32], [-0.82, 0.32], [0.82, 0.32]].forEach(([x, z]) => g.add(box(0.05, 0.6, 0.05, metalMat, x, 0.3, z)));
-  g.add(box(0.5, 0.02, 0.15, darkMat, 0, 0.65, 0.1));
+  const body = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.6, 0.8), oakMat); body.position.y = 0.3; body.castShadow = true; g.add(body);
+  const top = new THREE.Mesh(new THREE.BoxGeometry(1.82, 0.04, 0.82), whiteMat); top.position.y = 0.62; top.castShadow = true; g.add(top);
+  const kb = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.02, 0.15), darkMat); kb.position.set(0, 0.65, 0.1); g.add(kb);
+  return g;
+}
+
+function mkPlant(scale = 1): THREE.Group {
+  const g = new THREE.Group();
+  const pot = new THREE.Mesh(new THREE.CylinderGeometry(0.28 * scale, 0.22 * scale, 0.4 * scale, 16), whiteMat); pot.position.y = 0.2 * scale; pot.castShadow = true; g.add(pot);
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.04 * scale, 0.05 * scale, 0.5 * scale, 6), woodDarkMat); trunk.position.y = 0.6 * scale; g.add(trunk);
+  [0, 1, 2].forEach(i => {
+    const leaf = new THREE.Mesh(new THREE.ConeGeometry(0.3 * scale, 0.7 * scale, 8), greenMats[i]);
+    leaf.position.set((i - 1) * 0.12 * scale, (1.0 + i * 0.25) * scale, (i - 1) * 0.08 * scale);
+    leaf.castShadow = true; g.add(leaf);
+  });
   return g;
 }
 
 export const ITEM_CATALOG: Catalog = {
+  // --- AI EMPLOYEES ---
   frontend_desk: {
     name: 'Frontend Engineer', icon: 'fa-code', price: 0, seats: 0, dim: [2.0, 1.2], role: 'Frontend',
     factory: (bc) => {
-      const g = mkDeskBody(); g.add(mkMonitor(-0.35, true, 'terminal')); g.add(mkMonitor(0.35, true, 'status'));
+      const g = new THREE.Group();
+      g.add(mkDeskBody()); g.add(mkMonitor(-0.35)); g.add(mkMonitor(0.35));
       const ch = mkChair(); ch.position.z = 0.45; g.add(ch);
       const avatar = createAgentAvatar(bc); avatar.position.set(0, 0.49, 0.4); g.add(avatar);
       return g;
@@ -70,23 +66,88 @@ export const ITEM_CATALOG: Catalog = {
   backend_desk: { name: 'Backend Engineer', icon: 'fa-server', price: 0, seats: 0, dim: [2.0, 1.2], role: 'Backend', factory: (bc) => ITEM_CATALOG.frontend_desk.factory(bc) },
   qa_desk: { name: 'QA Engineer', icon: 'fa-bug', price: 0, seats: 0, dim: [2.0, 1.2], role: 'QA', factory: (bc) => ITEM_CATALOG.frontend_desk.factory(bc) },
 
+  // --- OFFICE FURNITURE ---
   workstation_set: {
     name: 'Workstation', icon: 'fa-desktop', price: 950, seats: 1, dim: [2.0, 1.2],
     factory: () => {
-      const g = mkDeskBody(); g.add(mkMonitor(-0.35, true, 'terminal')); g.add(mkMonitor(0.35, true, 'status'));
+      const g = new THREE.Group();
+      g.add(mkDeskBody()); g.add(mkMonitor(-0.35)); g.add(mkMonitor(0.35));
       const ch = mkChair(); ch.position.z = 0.45; g.add(ch);
       return g;
     }
   },
   conference_table: {
-    name: 'Conference Table', icon: 'fa-table', price: 2400, seats: 6, dim: [3.4, 2.4],
+    name: 'Conference Table', icon: 'fa-table', price: 2400, seats: 8, dim: [4.6, 1.7],
     factory: () => {
       const g = new THREE.Group();
-      g.add(box(3.2, 0.06, 1.4, whiteMat, 0, 0.74, 0));
-      [[-1.4, -0.55], [1.4, -0.55], [-1.4, 0.55], [1.4, 0.55]].forEach(([x, z]) => g.add(box(0.06, 0.74, 0.06, oakMat, x, 0.37, z)));
-      const ch = (x: number, z: number, ry: number) => { const c = mkChair(); c.position.set(x, 0, z); c.rotation.y = ry; return c; };
-      g.add(ch(-1.1, -1.1, Math.PI), ch(0, -1.1, Math.PI), ch(1.1, -1.1, Math.PI));
-      g.add(ch(-1.1, 1.1, 0), ch(0, 1.1, 0), ch(1.1, 1.1, 0));
+      const top = new THREE.Mesh(new THREE.BoxGeometry(4.6, 0.06, 1.7), tableMat); top.position.y = 0.74; top.castShadow = true; g.add(top);
+      [-2.0, 2.0].forEach(x => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.72, 1.4), woodDarkMat); leg.position.set(x, 0.36, 0); leg.castShadow = true; g.add(leg); });
+      [-1.6, -0.55, 0.55, 1.6].forEach(x => {
+        const cn = mkChair(); cn.position.set(x, 0, -1.15); cn.rotation.y = Math.PI; g.add(cn);
+        const cs = mkChair(); cs.position.set(x, 0, 1.15); g.add(cs);
+      });
+      return g;
+    }
+  },
+  rect_table: {
+    name: 'Office Table', icon: 'fa-table-cells', price: 620, seats: 0, dim: [1.7, 0.9],
+    factory: () => {
+      const g = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.04, 0.85), whiteMat); top.position.y = 0.74; top.castShadow = true; g.add(top);
+      [[-0.72, -0.35], [0.72, -0.35], [-0.72, 0.35], [0.72, 0.35]].forEach(([x, z]) => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.74, 0.05), oakMat); leg.position.set(x, 0.37, z); leg.castShadow = true; g.add(leg);
+      });
+      return g;
+    }
+  },
+  round_table: {
+    name: 'Round Table', icon: 'fa-circle', price: 480, seats: 0, dim: [1.2, 1.2],
+    factory: () => {
+      const g = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.04, 32), oakMat); top.position.y = 0.74; top.castShadow = true; g.add(top);
+      const pedestal = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.74, 12), metalMat); pedestal.position.y = 0.37; g.add(pedestal);
+      const base = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.03, 16), darkMat); base.position.y = 0.015; g.add(base);
+      return g;
+    }
+  },
+  chair: { name: 'Office Chair', icon: 'fa-chair', price: 95, seats: 1, dim: [0.45, 0.45], factory: () => mkChair() },
+  laptop: {
+    name: 'Laptop', icon: 'fa-laptop', price: 180, seats: 0, dim: [0.35, 0.25],
+    factory: () => {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.02, 0.24), darkMat); base.position.y = 0.01; base.castShadow = true; g.add(base);
+      const scr = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.22, 0.015), screenGlowMat); scr.position.set(0, 0.11, -0.12); scr.rotation.x = -0.3; g.add(scr);
+      return g;
+    }
+  },
+  wall_screen: {
+    name: 'TV Wall Screen', icon: 'fa-tv', price: 1200, seats: 0, dim: [4.2, 0.2],
+    factory: () => {
+      const g = new THREE.Group();
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.4, 0.08), darkMat); frame.position.y = 1.7; frame.castShadow = true; g.add(frame);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.2), screenGlowMat); scr.position.set(0, 1.7, 0.05); g.add(scr);
+      return g;
+    }
+  },
+  whiteboard: {
+    name: 'Whiteboard', icon: 'fa-chalkboard', price: 240, seats: 0, dim: [1.9, 0.5],
+    factory: () => {
+      const g = new THREE.Group();
+      const board = new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.1, 0.04), whiteMat); board.position.y = 1.35; board.castShadow = true; g.add(board);
+      const rim = new THREE.Mesh(new THREE.BoxGeometry(1.88, 1.18, 0.02), metalMat); rim.position.set(0, 1.35, -0.03); g.add(rim);
+      [-0.8, 0.8].forEach(x => { const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.03, 1.35, 8), metalMat); leg.position.set(x, 0.67, -0.05); g.add(leg); });
+      return g;
+    }
+  },
+  filing_cabinet: {
+    name: 'Filing Cabinet', icon: 'fa-cabinet-filing', price: 310, seats: 0, dim: [0.55, 0.65],
+    factory: () => {
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1.2, 0.6), metalMat); body.position.y = 0.6; body.castShadow = true; g.add(body);
+      [0.25, 0.6, 0.95].forEach(y => {
+        const drawer = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.28, 0.03), darkMat); drawer.position.set(0, y, 0.31); g.add(drawer);
+        const handle = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.02, 0.02), metalMat); handle.position.set(0, y + 0.08, 0.33); g.add(handle);
+      });
       return g;
     }
   },
@@ -94,19 +155,23 @@ export const ITEM_CATALOG: Catalog = {
     name: 'Library Bookshelf', icon: 'fa-book', price: 680, seats: 0, dim: [1.9, 0.4],
     factory: () => {
       const g = new THREE.Group();
-      [-0.92, 0.92].forEach(x => g.add(box(0.06, 2.2, 0.35, woodDarkMat, x, 1.1, 0)));
-      [0.25, 0.7, 1.15, 1.6, 2.05].forEach(y => g.add(box(1.8, 0.04, 0.32, woodDarkMat, 0, y, 0)));
+      [-0.92, 0.92].forEach(x => { const side = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.2, 0.35), woodDarkMat); side.position.set(x, 1.1, 0); side.castShadow = true; g.add(side); });
+      [0.25, 0.7, 1.15, 1.6, 2.05].forEach(y => { const sh = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.04, 0.32), woodDarkMat); sh.position.y = y; g.add(sh); });
       [0.45, 0.9, 1.35, 1.8].forEach((y, row) => {
-        for (let i = 0; i < 7; i++) { g.add(box(0.14, 0.3, 0.22, bookMats[(i + row) % bookMats.length], -0.72 + i * 0.24, y + 0.17, 0)); }
+        for (let i = 0; i < 7; i++) {
+          const book = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.3, 0.22), bookMats[(i + row) % bookMats.length]);
+          book.position.set(-0.72 + i * 0.24, y + 0.17, 0); g.add(book);
+        }
       });
       return g;
     }
   },
   reading_table: {
-    name: 'Reading Table', icon: 'fa-circle', price: 420, seats: 2, dim: [1.6, 1.6],
+    name: 'Reading Table', icon: 'fa-circle-dot', price: 420, seats: 2, dim: [1.6, 1.6],
     factory: () => {
       const g = new THREE.Group();
-      g.add(cyl(0.7, 0.7, 0.05, tableMat, 0, 0.74, 0)); g.add(cyl(0.06, 0.08, 0.72, metalMat, 0, 0.36, 0));
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, 0.05, 24), tableMat); top.position.y = 0.74; top.castShadow = true; g.add(top);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.72, 12), metalMat); pole.position.y = 0.36; g.add(pole);
       const c1 = mkChair(); c1.position.set(0, 0, -1.0); c1.rotation.y = Math.PI; g.add(c1);
       const c2 = mkChair(); c2.position.set(0, 0, 1.0); g.add(c2);
       return g;
@@ -116,8 +181,9 @@ export const ITEM_CATALOG: Catalog = {
     name: 'Lounge Sofa', icon: 'fa-couch', price: 1450, seats: 3, dim: [2.4, 1.0],
     factory: () => {
       const g = new THREE.Group();
-      g.add(box(2.2, 0.4, 0.9, fabricMat, 0, 0.25, 0)); g.add(box(2.2, 0.55, 0.25, fabricMat, 0, 0.65, -0.35));
-      [-1.1, 1.1].forEach(x => g.add(box(0.22, 0.55, 0.9, fabricMat, x, 0.5, 0)));
+      const base = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 0.9), fabricMat); base.position.y = 0.25; base.castShadow = true; g.add(base);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.55, 0.25), fabricMat); back.position.set(0, 0.65, -0.35); back.castShadow = true; g.add(back);
+      [-1.1, 1.1].forEach(x => { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.55, 0.9), fabricMat); arm.position.set(x, 0.5, 0); arm.castShadow = true; g.add(arm); });
       return g;
     }
   },
@@ -125,14 +191,17 @@ export const ITEM_CATALOG: Catalog = {
     name: 'Accent Chair', icon: 'fa-chair', price: 520, seats: 1, dim: [1.1, 1.0],
     factory: () => {
       const g = new THREE.Group();
-      g.add(box(0.9, 0.4, 0.85, fabricMat, 0, 0.25, 0)); g.add(box(0.9, 0.55, 0.22, fabricMat, 0, 0.65, -0.32));
+      const base = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.4, 0.85), fabricMat); base.position.y = 0.25; base.castShadow = true; g.add(base);
+      const back = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.55, 0.22), fabricMat); back.position.set(0, 0.65, -0.32); back.castShadow = true; g.add(back);
       return g;
     }
   },
   coffee_table: {
     name: 'Coffee Table', icon: 'fa-circle-dot', price: 260, seats: 0, dim: [1.2, 1.2],
     factory: () => {
-      const g = new THREE.Group(); g.add(cyl(0.6, 0.6, 0.05, woodDarkMat, 0, 0.4, 0)); g.add(cyl(0.05, 0.07, 0.38, metalMat, 0, 0.2, 0));
+      const g = new THREE.Group();
+      const top = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.05, 24), woodDarkMat); top.position.y = 0.4; top.castShadow = true; g.add(top);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.07, 0.38, 10), metalMat); pole.position.y = 0.2; g.add(pole);
       return g;
     }
   },
@@ -151,8 +220,9 @@ export const ITEM_CATALOG: Catalog = {
     name: 'Waiting Bench', icon: 'fa-bench-tree', price: 380, seats: 3, dim: [2.0, 0.6],
     factory: () => {
       const g = new THREE.Group();
-      g.add(box(2, 0.08, 0.5, tableMat, 0, 0.45, 0)); g.add(box(2, 0.5, 0.06, tableMat, 0, 0.75, -0.25));
-      [-0.9, 0.9].forEach(x => g.add(box(0.06, 0.45, 0.45, metalMat, x, 0.22, 0)));
+      const seat = new THREE.Mesh(new THREE.BoxGeometry(2, 0.08, 0.5), tableMat); seat.position.y = 0.45; seat.castShadow = true; g.add(seat);
+      [-0.9, 0.9].forEach(x => { const leg = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.45, 0.45), metalMat); leg.position.set(x, 0.22, 0); g.add(leg); });
+      const back = new THREE.Mesh(new THREE.BoxGeometry(2, 0.5, 0.06), tableMat); back.position.set(0, 0.75, -0.25); g.add(back);
       return g;
     }
   },
@@ -162,35 +232,32 @@ export const ITEM_CATALOG: Catalog = {
       const g = new THREE.Group();
       const body = new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 0.75, 24, 1, true, Math.PI * 0.2, Math.PI * 0.6), new THREE.MeshStandardMaterial({ color: 0x413730, roughness: 0.4, metalness: 0.6, side: THREE.DoubleSide }));
       body.position.y = 0.37; body.castShadow = true; g.add(body);
-      [-0.5, 0, 0.5].forEach(a => { const m = mkMonitor(Math.sin(a) * 1.6, true, 'status'); m.position.z = -Math.cos(a) * 1.6 + 1.2; m.rotation.y = -a; g.add(m); });
-      return g;
-    }
-  },
-  wall_screen: {
-    name: 'Wall Display', icon: 'fa-tv', price: 1200, seats: 0, dim: [4.2, 0.2],
-    factory: () => {
-      const g = new THREE.Group();
-      g.add(box(4.2, 2.4, 0.08, darkMat, 0, 1.7, 0)); const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.2), screenGlowMat); scr.position.set(0, 1.7, 0.05); g.add(scr);
+      [-0.5, 0, 0.5].forEach(a => { const m = mkMonitor(Math.sin(a) * 1.6); m.position.z = -Math.cos(a) * 1.6 + 1.2; m.rotation.y = -a; g.add(m); });
       return g;
     }
   },
   archive_server: {
     name: 'Memory Server', icon: 'fa-server', price: 2800, seats: 0, dim: [0.9, 0.7],
     factory: () => {
-      const g = new THREE.Group(); g.add(box(0.8, 2, 0.6, darkMat, 0, 1, 0));
-      [0.4, 0.8, 1.2, 1.6].forEach(y => g.add(box(0.6, 0.03, 0.02, screenGlowMat, 0, y, 0.31)));
+      const g = new THREE.Group();
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2, 0.6), darkMat); body.position.y = 1; body.castShadow = true; g.add(body);
+      [0.4, 0.8, 1.2, 1.6].forEach(y => { const led = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.03, 0.02), screenGlowMat); led.position.set(0, y, 0.31); g.add(led); });
       return g;
     }
   },
   plant_large: { name: 'Large Planter', icon: 'fa-seedling', price: 140, seats: 0, dim: [0.8, 0.8], factory: () => mkPlant(1.8) },
-
-  // Legacy / Customization Mode Items
-  round_table: { name: 'Round Table', icon: 'fa-circle', price: 480, seats: 0, dim: [1.2, 1.2], factory: () => { const g = new THREE.Group(); g.add(cyl(0.55, 0.55, 0.04, oakMat, 0, 0.74, 0)); g.add(cyl(0.06, 0.08, 0.74, metalMat, 0, 0.37, 0)); g.add(cyl(0.3, 0.3, 0.03, darkMat, 0, 0.015, 0)); return g; } },
-  rect_table: { name: 'Rectangle Table', icon: 'fa-table-cells', price: 620, seats: 0, dim: [1.7, 0.9], factory: () => { const g = new THREE.Group(); g.add(box(1.6, 0.04, 0.85, whiteMat, 0, 0.74, 0)); [[-0.72, -0.35], [0.72, -0.35], [-0.72, 0.35], [0.72, 0.35]].forEach(([x, z]) => g.add(box(0.05, 0.74, 0.05, oakMat, x, 0.37, z))); return g; } },
-  chair: { name: 'Dining Chair', icon: 'fa-chair', price: 95, seats: 1, dim: [0.45, 0.45], factory: () => mkChair() },
-  counter: { name: 'Service Counter', icon: 'fa-mug-saucer', price: 3800, seats: 0, dim: [3.1, 0.8], factory: (bc) => { const g = new THREE.Group(); g.add(box(3.0, 0.95, 0.7, oakMat, 0, 0.475, 0)); g.add(box(3.0, 0.05, 0.8, whiteMat, 0, 0.975, 0)); const s = box(3.0, 0.02, 0.02, new THREE.MeshStandardMaterial({ color: bc, emissive: bc, emissiveIntensity: 0.5 }), 0, 0.7, 0.36); s.userData.brand = true; g.add(s); return g; } },
-  espresso_machine: { name: 'Espresso Machine', icon: 'fa-mug-hot', price: 2400, seats: 0, dim: [0.8, 0.6], factory: (bc) => { const g = new THREE.Group(); g.add(box(0.7, 0.5, 0.45, metalMat, 0, 1.05, 0)); g.add(box(0.7, 0.1, 0.45, darkMat, 0, 1.35, 0)); const s = box(0.1, 0.1, 0.05, new THREE.MeshStandardMaterial({ color: bc, emissive: bc, emissiveIntensity: 0.3 }), 0, 0.85, 0.22); s.userData.brand = true; g.add(s); g.add(cyl(0.08, 0.06, 0.1, whiteMat, 0, 0.8, 0.22)); return g; } },
-  retail_rack: { name: 'Retail Rack', icon: 'fa-shirt', price: 320, seats: 0, dim: [1.2, 0.4], factory: () => { const g = new THREE.Group(); [[-0.55, -0.15], [0.55, -0.15], [-0.55, 0.15], [0.55, 0.15]].forEach(([x, z]) => g.add(cyl(0.02, 0.02, 1.8, metalMat, x, 0.9, z))); [0.3, 0.9, 1.5].forEach(y => g.add(box(1.1, 0.03, 0.3, oakMat, 0, y, 0))); return g; } },
   plant: { name: 'Planter', icon: 'fa-seedling', price: 85, seats: 0, dim: [0.5, 0.5], factory: () => mkPlant(1) },
-  pendant: { name: 'Pendant Light', icon: 'fa-lightbulb', price: 165, seats: 0, dim: [0.4, 0.4], factory: (bc) => { const g = new THREE.Group(); g.add(cyl(0.01, 0.01, 1.7, darkMat, 0, 1.15, 0)); const s = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.28, 18, 1, true), new THREE.MeshStandardMaterial({ color: bc, metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide })); s.position.y = 2.0; s.userData.brand = true; g.add(s); g.add(new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e6, emissiveIntensity: 1.5 }))); g.add(new THREE.PointLight(0xfff4e6, 0.5, 3)); return g; } }
+  pendant: {
+    name: 'Pendant Light', icon: 'fa-lightbulb', price: 165, seats: 0, dim: [0.4, 0.4],
+    factory: (bc) => {
+      const g = new THREE.Group();
+      const cord = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 1.7, 6), darkMat); cord.position.y = 1.15; g.add(cord);
+      const shade = new THREE.Mesh(new THREE.ConeGeometry(0.2, 0.28, 18, 1, true), new THREE.MeshStandardMaterial({ color: bc, metalness: 0.8, roughness: 0.2, side: THREE.DoubleSide }));
+      shade.position.y = 2.0; shade.userData.brand = true; g.add(shade);
+      const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.06, 12, 12), new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0xfff4e6, emissiveIntensity: 1.5 }));
+      bulb.position.y = 1.9; g.add(bulb);
+      const light = new THREE.PointLight(0xfff4e6, 0.5, 3); light.position.y = 1.8; g.add(light);
+      return g;
+    }
+  },
 };
