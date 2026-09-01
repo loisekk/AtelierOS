@@ -1,8 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import * as THREE from 'three';
 import { jsPDF } from 'jspdf';
 import { ITEM_CATALOG } from '../features/furniture/catalog';
-import { TEMPLATES } from '../features/furniture/templates';
 import { useAtelier } from '../features/workspace/hooks/useAtelier';
 import { useGateway } from '../features/workspace/hooks/useGateway';
 import type { GatewayMessage } from '../features/workspace/hooks/useGateway';
@@ -22,6 +20,7 @@ const BRAND_SWATCHES = ['#C75D3F', '#1F3A5F', '#6B8E4E', '#D49B3B', '#2A2826'];
 const HELP_SHORTCUTS = [
   { keys: 'Click item + floor', desc: 'Place furniture/employee' },
   { keys: 'Drag item', desc: 'Move furniture/employee' },
+  { keys: 'R / Scroll', desc: 'Rotate item (in Customize Mode)' },
   { keys: 'Delete / Backspace', desc: 'Remove selected item' },
   { keys: 'Ctrl+Z', desc: 'Undo last action' },
   { keys: 'Esc', desc: 'Cancel / close panels' },
@@ -45,7 +44,6 @@ function App() {
   const [helpOpen, setHelpOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [activeTemplate, setActiveTemplate] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isCustomizing, setIsCustomizing] = useState(false);
 
@@ -62,18 +60,6 @@ function App() {
     setToast(msg);
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
     toastTimer.current = window.setTimeout(() => setToast(null), 2200);
-  }, []);
-
-  const handleDispatch = useCallback((taskData: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
-    const newTask: Task = {
-      ...taskData,
-      id: Math.random().toString(36).slice(2, 11),
-      status: 'running',
-      createdAt: Date.now()
-    };
-    setTasks(prev => [...prev, newTask]);
-    sendMessage({ type: 'dispatch', task_id: newTask.id, assignee_ids: newTask.assigneeIds, prompt: newTask.prompt });
-    showToast(`Task dispatched to Python Engine!`);
   }, []);
 
   const handleGatewayMessage = useCallback((msg: GatewayMessage) => {
@@ -145,7 +131,20 @@ function App() {
     }
   }, [engineRef, showToast, placedItems]);
 
+  // ── Gateway FIRST, so everything below can safely use sendMessage ──
   const { isConnected, sendMessage } = useGateway(handleGatewayMessage);
+
+  const handleDispatch = useCallback((taskData: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
+    const newTask: Task = {
+      ...taskData,
+      id: Math.random().toString(36).slice(2, 11),
+      status: 'running',
+      createdAt: Date.now()
+    };
+    setTasks(prev => [...prev, newTask]);
+    sendMessage({ type: 'dispatch', task_id: newTask.id, assignee_ids: newTask.assigneeIds, prompt: newTask.prompt });
+    showToast(`Task dispatched to Python Engine!`);
+  }, [sendMessage, showToast]);
 
   const handleTranscript = useCallback((text: string) => {
     showToast(`Heard: "${text}"`);
@@ -156,7 +155,7 @@ function App() {
     } else {
       showToast('Hire an employee first!');
     }
-  }, [placedItems, handleDispatch]);
+  }, [placedItems, handleDispatch, showToast]);
 
   const { isListening, startListening, stopListening } = useVoice(handleTranscript);
 
@@ -205,9 +204,20 @@ function App() {
 
   const handleSelectType = (type: string | null) => {
     setSelectedType(type);
-    setActiveTemplate(null);
     engineRef.current?.setSelectedItemType(type);
+    if (type && !isCustomizing) {
+      setIsCustomizing(true);
+      engineRef.current?.setCustomizing(true);
+    }
   };
+
+  const handleExitCustomize = useCallback(() => {
+    setIsCustomizing(false);
+    setSelectedType(null);
+    engineRef.current?.setSelectedItemType(null);
+    engineRef.current?.setCustomizing(false);
+    showToast('Exited Customize Mode');
+  }, [engineRef ,showToast]);
 
   const handleHireClick = (type: string) => {
     setHiringType(type);
@@ -241,24 +251,11 @@ function App() {
     showToast("Team gathering in the Meeting Room...");
   };
 
-  const handleLoadTemplate = (name: string) => {
-    const template = TEMPLATES.find(t => t.name === name);
-    if (!template) return;
-    engineRef.current?.clearAll();
-    setActiveTemplate(name);
-    setSelectedType(null);
-    template.items.forEach(item => {
-      engineRef.current?.placeItem(item.type, new THREE.Vector3(item.x + 30, 0, item.z), item.rotY);
-    });
-    showToast(`Loaded "${template.name}" layout`);
-  };
-
   const handleUndo = () => engineRef.current?.undo();
 
   const handleClear = () => {
     engineRef.current?.clearAll();
     setSelectedType(null);
-    setActiveTemplate(null);
     showToast('Canvas cleared');
   };
 
@@ -273,7 +270,6 @@ function App() {
     doc.text(`Generated ${new Date().toLocaleString()}`, 14, 25); doc.setTextColor(0);
     doc.setDrawColor(0); doc.setLineWidth(0.4); doc.line(14, 29, 196, 29);
 
-    // BOUNDS-aware PDF export
     const spanX = BOUNDS.maxX - BOUNDS.minX;
     const spanZ = BOUNDS.maxZ - BOUNDS.minZ;
     const scale = 150 / spanX;
@@ -307,7 +303,9 @@ function App() {
       if (e.key === 'Escape') {
         setExportOpen(false); setHelpOpen(false); setSettingsOpen(false);
         setAgentModalOpen(false); setDispatchModalOpen(false); setSelectedType(null);
-        engineRef.current?.setSelectedItemType(null); return;
+        engineRef.current?.setSelectedItemType(null);
+        if (isCustomizing) handleExitCustomize();
+        return;
       }
       if ((e.key === 'Delete' || e.key === 'Backspace') && !helpOpen && !settingsOpen && !agentModalOpen && !dispatchModalOpen) {
         engineRef.current?.deleteSelected(); return;
@@ -316,7 +314,7 @@ function App() {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [helpOpen, settingsOpen, agentModalOpen, dispatchModalOpen, engineRef]);
+  }, [helpOpen, settingsOpen, agentModalOpen, dispatchModalOpen, engineRef, isCustomizing, handleExitCustomize]);
 
   const selectedItem = placedItems.find(i => i.id === selectedId);
   const breakdown = placedItems.reduce<Record<string, { count: number; unit: number }>>((acc, i) => {
@@ -336,16 +334,20 @@ function App() {
 
       <div className="flex flex-1 overflow-hidden">
         <LeftPanel
-          mode={isCustomizing ? 'settings' : 'main'} templates={TEMPLATES} activeTemplate={activeTemplate}
-          selectedType={selectedType} onSelectType={handleSelectType} onLoadTemplate={handleLoadTemplate}
-          onUndo={handleUndo} onClear={handleClear} placedCount={placedItems.filter(i => i.role).length} onHireClick={handleHireClick}
+          mode={isCustomizing ? 'settings' : 'main'}
+          selectedType={selectedType}
+          onSelectType={handleSelectType}
+          onUndo={handleUndo}
+          onClear={handleClear}
+          onExitCustomize={handleExitCustomize}
+          placedCount={placedItems.filter(i => i.role).length}
+          onHireClick={handleHireClick}
           setView={(v) => handleView(v)}
         />
 
         <main className="flex-1 relative">
           <div ref={containerRef} className="blueprint-grid" style={{ position: 'absolute', inset: 0 }} />
 
-          {/* Top Right HUD - System Status */}
           <div className="hud hud-tr">
             <div className="flex items-center gap-4 text-[10.5px]">
               <div className="flex items-center gap-1.5">
@@ -356,14 +358,12 @@ function App() {
             </div>
           </div>
 
-          {/* Bottom Center HUD - Camera Controls / Stats */}
           <div className="hud hud-bc">
             <div className="flex items-center gap-3 text-[10.5px]">
               <button className="btn btn-icon" title="Walk Mode" onClick={() => handleView('office')}><i className="fa-solid fa-person-walking text-[10px]"></i></button>
               <button className="btn btn-icon" title="Fly Mode" onClick={() => handleView('top')}><i className="fa-solid fa-paper-plane text-[10px]"></i></button>
               <button className="btn btn-icon" title="Focus Agent" onClick={() => handleView('office')}><i className="fa-solid fa-crosshairs text-[10px]"></i></button>
               
-              {/* Start Meeting Button */}
               <button className="btn btn-accent" title="Gather Team for Meeting" onClick={handleStartMeeting}>
                 <i className="fa-solid fa-users-medical text-[10px]"></i> Start Standup
               </button>
@@ -378,7 +378,6 @@ function App() {
             </div>
           </div>
 
-          {/* Selected Item HUD */}
           {selectedItem && (
             <div className="hud hud-bl">
               <div className="flex items-center gap-2 mb-1">
@@ -411,7 +410,9 @@ function App() {
         />
       </div>
 
+      {/* key remounts the modal per employee/hire session — enables lazy state init in AgentModal */}
       <AgentModal 
+        key={selectedItem?.role ? selectedItem.id : `hire-${hiringType ?? 'none'}`}
         isOpen={agentModalOpen} onClose={() => setAgentModalOpen(false)} onHire={handleHire} 
         onUpdate={handleUpdateAgent} selectedEmployee={selectedItem?.role ? selectedItem : null} hiringType={hiringType}
       />
@@ -419,7 +420,6 @@ function App() {
         isOpen={dispatchModalOpen} onClose={() => setDispatchModalOpen(false)} onDispatch={handleDispatch} employees={employees}
       />
 
-      {/* CEO HITL Approval Modal */}
       <div className={`export-modal ${approvalData ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) handleDeny(); }}>
         <div className="export-sheet" style={{ width: 500, borderColor: 'var(--warn)' }}>
           <div className="flex items-center gap-3 mb-4">
@@ -442,7 +442,6 @@ function App() {
         </div>
       </div>
 
-      {/* Export modal */}
       <div className={`export-modal ${exportOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setExportOpen(false); }}>
         <div className="export-sheet">
           <div className="flex items-center justify-between mb-4">
@@ -464,7 +463,6 @@ function App() {
         </div>
       </div>
 
-      {/* Settings modal - Now contains Cost Breakdown */}
       <div className={`export-modal ${settingsOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setSettingsOpen(false); }}>
         <div className="export-sheet" style={{ width: 600 }}>
           <div className="flex items-center justify-between mb-4">
@@ -481,13 +479,15 @@ function App() {
                     <div className="text-[10px] font-mono" style={{ color: 'var(--charcoal-3)' }}>Switch to furniture placement mode</div>
                   </div>
                 </div>
-                <button className="btn btn-primary w-full justify-center" onClick={() => { setIsCustomizing(true); setSettingsOpen(false); showToast("Entered Customization Mode"); }}>
+                <button className="btn btn-primary w-full justify-center" onClick={() => { setIsCustomizing(true); engineRef.current?.setCustomizing(true); setSettingsOpen(false); showToast("Entered Customization Mode"); }}>
                   <i className="fa-solid fa-couch text-[11px]"></i> Enter Customization Mode
+                </button>
+                <button className="btn w-full justify-center mt-2" onClick={() => { engineRef.current?.resetOffice(); setSettingsOpen(false); showToast('Office reset to canonical default layout'); }}>
+                  <i className="fa-solid fa-rotate text-[11px]"></i> Reset Office Layout
                 </button>
               </div>
             </div>
 
-            {/* Cost Breakdown Section */}
             <div>
               <h4 className="text-[12px] font-semibold mb-2" style={{ color: 'var(--charcoal)' }}>Cost Breakdown</h4>
               <div className="p-3 rounded-lg border" style={{ borderColor: 'var(--line-soft)', background: 'var(--surface-2)' }}>
@@ -516,7 +516,6 @@ function App() {
         </div>
       </div>
 
-      {/* Help modal */}
       <div className={`export-modal ${helpOpen ? 'open' : ''}`} onClick={(e) => { if (e.target === e.currentTarget) setHelpOpen(false); }}>
         <div className="export-sheet">
           <div className="flex items-center justify-between mb-4">
