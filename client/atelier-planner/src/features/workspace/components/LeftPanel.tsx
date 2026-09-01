@@ -1,16 +1,13 @@
 import type { FC } from 'react';
 import { ITEM_CATALOG } from '../../furniture/catalog';
-import type { Template } from '../../furniture/templates';
 
 interface LeftPanelProps {
   mode: 'main' | 'settings';
-  templates: Template[];
-  activeTemplate: string | null;
   selectedType: string | null;
   onSelectType: (type: string | null) => void;
-  onLoadTemplate: (name: string) => void;
   onUndo: () => void;
   onClear: () => void;
+  onExitCustomize: () => void;
   placedCount: number;
   onHireClick: (type: string) => void;
   setView: (v: 'office' | 'ceo' | 'command' | 'knowledge' | 'top') => void;
@@ -26,7 +23,17 @@ const NAV_ITEMS = [
   { icon: 'fa-book', label: 'Knowledge Hub', zone: 'knowledge' },
 ];
 
-export const LeftPanel: FC<LeftPanelProps> = ({ mode, templates, activeTemplate, selectedType, onSelectType, onLoadTemplate, onUndo, onClear, placedCount, onHireClick, setView }) => {
+export const LeftPanel: FC<LeftPanelProps> = ({ 
+  mode, 
+  selectedType, 
+  onSelectType, 
+  onUndo, 
+  onClear,
+  onExitCustomize,
+  placedCount, 
+  onHireClick, 
+  setView 
+}) => {
   const employees = Object.entries(ITEM_CATALOG).filter(([_, item]) => item.role);
   const furniture = Object.entries(ITEM_CATALOG).filter(([_, item]) => !item.role);
 
@@ -43,7 +50,7 @@ export const LeftPanel: FC<LeftPanelProps> = ({ mode, templates, activeTemplate,
             {NAV_ITEMS.map(item => (
               <button 
                 key={item.label} 
-                onClick={() => setView(item.zone as any)}
+                onClick={() => setView(item.zone as 'office' | 'ceo' | 'command' | 'knowledge' | 'top')}
                 className="w-full flex items-center gap-3 p-2.5 rounded-md text-left transition-colors hover:bg-[var(--surface-2)]"
               >
                 <i className={`fa-solid ${item.icon} text-[12px] w-5 text-center`} style={{ color: 'var(--accent)' }}></i>
@@ -88,24 +95,29 @@ export const LeftPanel: FC<LeftPanelProps> = ({ mode, templates, activeTemplate,
         </>
       ) : (
         <div className="p-4 flex flex-col h-full overflow-hidden">
-          <h3 className="panel-section-title">Templates</h3>
-          <div className="space-y-1.5 mb-5">
-            {templates.map(t => (
-              <button key={t.name} type="button" className={`item-card w-full ${activeTemplate === t.name ? 'active' : ''}`} onClick={() => onLoadTemplate(t.name)}>
-                <div className="item-icon"><i className={`fa-solid ${t.icon}`}></i></div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold" style={{ color: 'var(--charcoal)' }}>{t.name}</div>
-                  <div className="text-[10px] truncate" style={{ color: 'var(--charcoal-3)' }}>{t.description}</div>
-                </div>
-              </button>
-            ))}
-          </div>
+          <button 
+            type="button" 
+            className="btn btn-primary w-full justify-center mb-4"
+            onClick={onExitCustomize}
+          >
+            <i className="fa-solid fa-arrow-left text-[11px]"></i>
+            Exit Customize Mode
+          </button>
 
           <h3 className="panel-section-title">Furniture & Fixtures</h3>
-          {/* Added scrollable container for the expanding catalog */}
+          <div className="text-[10px] font-mono mb-3 px-1" style={{ color: 'var(--charcoal-3)' }}>
+            Click item → Click floor to place<br/>
+            Scroll/R to rotate • Esc to cancel
+          </div>
+          
           <div className="space-y-1.5 mb-5 flex-1 overflow-y-auto scroll-thin pr-1">
             {furniture.map(([key, item]) => (
-              <button key={key} type="button" className={`item-card w-full ${selectedType === key ? 'active' : ''}`} onClick={() => onSelectType(selectedType === key ? null : key)}>
+              <button 
+                key={key} 
+                type="button" 
+                className={`item-card w-full ${selectedType === key ? 'active' : ''}`} 
+                onClick={() => onSelectType(selectedType === key ? null : key)}
+              >
                 <div className="item-icon"><i className={`fa-solid ${item.icon}`}></i></div>
                 <div className="flex-1 min-w-0">
                   <div className="text-[12px] font-semibold" style={{ color: 'var(--charcoal)' }}>{item.name}</div>
@@ -116,8 +128,14 @@ export const LeftPanel: FC<LeftPanelProps> = ({ mode, templates, activeTemplate,
           </div>
 
           <div className="grid grid-cols-2 gap-1.5 mt-auto">
-            <button type="button" className="btn justify-center" onClick={onUndo}><i className="fa-solid fa-rotate-left text-[10px]"></i>Undo</button>
-            <button type="button" className="btn justify-center" onClick={onClear}><i className="fa-solid fa-eraser text-[10px]"></i>Clear</button>
+            <button type="button" className="btn justify-center" onClick={onUndo}>
+              <i className="fa-solid fa-rotate-left text-[10px]"></i>
+              Undo
+            </button>
+            <button type="button" className="btn justify-center" onClick={onClear}>
+              <i className="fa-solid fa-eraser text-[10px]"></i>
+              Clear
+            </button>
           </div>
         </div>
       )}
