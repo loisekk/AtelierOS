@@ -94,7 +94,7 @@ export function applyMaterialTheme(model: THREE.Object3D) {
     }
 
     // SHARED material instances — never clone per mesh (draw-call/GC friendly)
-    mesh.material = role === 'book' ? BOOK_MATS[hash(mesh.name) % BOOK_MATS.length] : (AtelierWarmMaterials as any)[role];
+    mesh.material = role === 'book' ? BOOK_MATS[hash(mesh.name) % BOOK_MATS.length] : (AtelierWarmMaterials as Record<string, THREE.Material>)[role];
     const [cast, recv] = SHADOW_POLICY[role] ?? [true, true];
     mesh.castShadow = cast; mesh.receiveShadow = recv;
   });
