@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MODEL_REGISTRY, HARNESS_OPTIONS } from '../../../data/models';
 import type { AgentConfig, PlacedItemMeta } from '../../ai-agents/types';
 
@@ -12,22 +12,19 @@ interface AgentModalProps {
 }
 
 export const AgentModal: React.FC<AgentModalProps> = ({ isOpen, onClose, onHire, onUpdate, selectedEmployee, hiringType }) => {
-  const [name, setName] = useState('');
-  const [harness, setHarness] = useState('opencode');
-  const [model, setModel] = useState('glm-4');
+  // State is initialized lazily from props. The parent remounts this component
+  // via `key` (employee id / hiring type), so every open session starts fresh —
+  // no setState-in-effect sync needed.
+  const [name, setName] = useState(() =>
+    selectedEmployee
+      ? selectedEmployee.config?.name || selectedEmployee.name
+      : hiringType
+        ? `New ${hiringType.split('_')[0]} Engineer`
+        : ''
+  );
+  const [harness, setHarness] = useState(() => selectedEmployee?.config?.harness || 'opencode');
+  const [model, setModel] = useState(() => selectedEmployee?.config?.model || 'glm-4');
   const [apiKey, setApiKey] = useState('');
-
-  useEffect(() => {
-    if (selectedEmployee) {
-      setName(selectedEmployee.config?.name || selectedEmployee.name);
-      setHarness(selectedEmployee.config?.harness || 'opencode');
-      setModel(selectedEmployee.config?.model || 'glm-4');
-    } else if (hiringType) {
-      setName(`New ${hiringType.split('_')[0]} Engineer`);
-      setHarness('opencode');
-      setModel('glm-4');
-    }
-  }, [selectedEmployee, hiringType]);
 
   if (!isOpen) return null;
 
