@@ -1,19 +1,18 @@
 import type { RoomBuilder } from '../layoutTypes';
-import { nat, F } from '../coords';
-import { backCorners } from '../builders';
+import { fFace, img } from '../coords';
 
-// ── MEETING ROOM: one centered table (8 baked chairs ≈ master's ~10), minimal sides ──
+// ── MEETING ROOM v3.4: image-space — ONE centered table (8 baked chairs), top
+// presentation wall, corner greens, left bookcase, dense bottom lounge. ──
 export const meetingRoom: RoomBuilder = (add, r, preset) => {
-  add('conference_table', ...nat(r, 0, 0), 0);
-  add('laptop', ...nat(r, -0.05, 0), 0.3, false, 0.77);
-  add('laptop', ...nat(r, 0.05, 0), -0.3, false, 0.77);
-  add('wall_screen', ...nat(r, 0, -0.88), F.S);
-  if (preset !== 'sparse') {
-    add('filing_cabinet', ...nat(r, 0.82, 0.60), F.W);
-    backCorners(add, r, 0.44, 0.40);
-  }
-  if (preset === 'dense') {                                // ── legacy v2.1 ──
-    add('whiteboard', ...nat(r, 0.88, 0.0), F.W);
-    add('reading_table', ...nat(r, 0, 0.68), 0);
+  add('conference_table', ...img(r, 0, 0), fFace('down'), false, 0, true);  // 1 centered table (essential, 8 baked chairs)
+  add('wall_screen', ...img(r, 0, -0.9), fFace('down'));                    // 2 presentation wall
+  add('plant_large', ...img(r, -0.78, -0.8));                               // 3-6 corner greens
+  add('plant_large', ...img(r, 0.78, -0.8));
+  add('plant_large', ...img(r, -0.78, 0.8));
+  add('plant_large', ...img(r, 0.78, 0.8));
+  add('bookshelf_large', ...img(r, -0.86, 0), fFace('right'));              // 7 left-wall bookcase
+  if (preset === 'dense') {                                                 // ── v2.1 dense lounge ──
+    add('lounge_sofa', ...img(r, 0, 0.82), fFace('up'));                    // 8 bottom lounge sofa
+    add('coffee_table', ...img(r, 0, 0.62));                                // 9 lounge coffee table
   }
 };
