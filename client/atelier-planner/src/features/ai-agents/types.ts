@@ -16,6 +16,7 @@ export interface PlacedItemMeta {
   price: number;
   seats: number;
   position: { x: number; z: number };
+  y?: number; // absolute world Y — lets the validator skip intentional dy-stacking
   rotation: number;
   role?: string;
   status?: AgentStatus;
