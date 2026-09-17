@@ -1,24 +1,21 @@
 import type { RoomBuilder } from '../layoutTypes';
-import { nat, F } from '../coords';
-import { backCorners, shelfRun } from '../builders';
+import { fFace, img } from '../coords';
+import { cluster, shelfRun } from '../builders';
 
-// ── WORKSPACE SHOWCASE: 2 aligned project tables (8 baked chairs EACH) + display ──
+// ── WORKSPACE SHOWCASE v3.4: image-space — two aligned project tables (8 baked
+// chairs EACH), pendant over each, right-wall screen, left-wall shelving. ──
 export const showcase: RoomBuilder = (add, r, preset) => {
-  add('conference_table', ...nat(r, 0, -0.30), 0);
-  add('laptop', ...nat(r, 0, -0.30), 0.3, false, 0.77);
-  add('conference_table', ...nat(r, 0, 0.42), 0);
-  add('laptop', ...nat(r, 0, 0.42), -0.3, false, 0.77);
-  add('wall_screen', ...nat(r, 0, -0.88), F.S);            // north wall, faces the room
-  add('bookshelf_large', ...nat(r, 0.82, 0.10), F.W);
-  if (preset !== 'sparse') {
-    add('filing_cabinet', ...nat(r, 0.82, 0.55), F.W);
-    backCorners(add, r, 0.44, 0.42);
-    add('pendant', ...nat(r, 0, -0.30));
-    add('pendant', ...nat(r, 0, 0.42));
-  }
-  if (preset === 'dense') {                                // ── legacy v2.1 wall desks + display shelf ──
-    add('workstation_set', ...nat(r, -0.78, -0.10), F.E, true);
-    add('workstation_set', ...nat(r, -0.78, 0.45), F.E, true);
-    shelfRun(add, ...nat(r, 0.86, -0.55), F.W, 2, 2.1);
+  add('conference_table', ...img(r, 0, -0.38), fFace('down'), false, 0, true);  // 1 collab table, top (essential)
+  add('pendant', ...img(r, 0, -0.38));                                          // 2 pendant over the top table
+  add('conference_table', ...img(r, 0, 0.32), fFace('down'));                   // 3 collab table, bottom
+  add('pendant', ...img(r, 0, 0.32));                                           // 4 pendant over the bottom table
+  add('wall_screen', ...img(r, 0.88, -0.3), fFace('left'));                     // 5 right-wall screen faces the room
+  shelfRun(add, ...img(r, -0.86, 0.1), fFace('right'), 2, 1.2);                 // 6,7 left-wall shelving run
+  add('plant_large', ...img(r, -0.78, -0.78));                                  // 8-11 corner greens
+  add('plant_large', ...img(r, 0.78, -0.78));
+  add('plant_large', ...img(r, -0.78, 0.78));
+  add('plant_large', ...img(r, 0.78, 0.78));
+  if (preset === 'dense') {                                                     // ── v3.3 demo cluster ──
+    cluster(add, ...img(r, 0, 0.82), 4);                                        // 12-16 demo cluster (table + 4 chairs)
   }
 };
