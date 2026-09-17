@@ -1,19 +1,13 @@
 import type { RoomBuilder } from '../layoutTypes';
-import { nat, F, FC } from '../coords';
+import { cGaze, img } from '../coords';
 
-// ── RECEPTION: centered curved desk, receptionist inside the nook, 2 plants ──
-// Desk arc bulges +X (east) at rot 0 — a catalog quirk, kept at rot 0 (approved).
-// If it reads sideways: change 0 → -Math.PI / 2.
-export const reception: RoomBuilder = (add, r, preset) => {
-  add('reception_desk', ...nat(r, 0, 0.05), 0);
-  add('chair', ...nat(r, 0, 0.15), FC.S);                  // inside the nook, faces the entrance
-  add('plant_large', ...nat(r, -0.70, -0.55));
-  add('plant_large', ...nat(r, 0.70, -0.55));
-  if (preset !== 'sparse') add('pendant', ...nat(r, 0, 0.35));
-  if (preset === 'dense') {                                // ── legacy v2.1 benches + side tables ──
-    add('waiting_bench', ...nat(r, -0.62, -0.25), F.E);
-    add('waiting_bench', ...nat(r, 0.62, -0.25), F.W);
-    add('round_table', ...nat(r, -0.64, 0.50), 0);
-    add('round_table', ...nat(r, 0.64, 0.50), 0);
-  }
+// ── RECEPTION v3.4: image-space — curved desk at rot 0 (arc bulges down, toward
+// the entrance — a catalog quirk, kept approved), receptionist chair inside the
+// nook gazing the entrance, welcome greens, pendant over the desk. ──
+export const reception: RoomBuilder = (add, r) => {
+  add('reception_desk', ...img(r, 0, 0.15), 0, false, 0, true);  // 1 arc at rot 0, faces the entrance (essential)
+  add('chair', ...img(r, 0, -0.12), cGaze('down'));              // 2 receptionist gazes the entrance
+  add('pendant', ...img(r, 0, 0.15));                            // 3 pendant over the desk
+  add('plant_large', ...img(r, -0.55, 0.72));                    // 4,5 welcome greens
+  add('plant_large', ...img(r, 0.55, 0.72));
 };
