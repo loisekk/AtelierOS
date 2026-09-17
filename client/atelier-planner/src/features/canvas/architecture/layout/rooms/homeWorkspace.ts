@@ -1,22 +1,22 @@
 import type { RoomBuilder } from '../layoutTypes';
-import { nat, deg, F } from '../coords';
-import { backCorners } from '../builders';
+import { fFace, gazeDeg, img } from '../coords';
+import { podGaze, shelfRun } from '../builders';
 
-// ── HOME WORKSPACE: CEO desk (sitter south, faces north), reading nook, west sofas ──
+// ── HOME WORKSPACE v3.4: image-space composition — exec table centered, side
+// desk pod behind it (sitter faces the table), left-wall shelving, right sofa
+// facing the table. All anchors: img(hx, hz) — right+, down+, as Image 3 shows. ──
 export const homeWorkspace: RoomBuilder = (add, r, preset) => {
-  add('workstation_set', ...nat(r, 0, -0.20), F.S, true);   // primary CEO desk
-  add('reading_table', ...nat(r, 0, 0.50));                 // secondary nook (2 baked chairs)
-  add('lounge_sofa', ...nat(r, -0.78, -0.20), F.E);         // west sofa 1
-  add('lounge_sofa', ...nat(r, -0.78, 0.42), F.E);          // west sofa 2
-  add('lounge_chair', ...nat(r, -0.55, -0.65), deg(45));    // NW armchair
-  add('bookshelf_large', ...nat(r, 0.82, -0.10), F.W);      // east display shelving
-  if (preset !== 'sparse') {
-    add('filing_cabinet', ...nat(r, 0.82, 0.45), F.W);
-    backCorners(add, r, 0.42, 0.42);
-  }
-  if (preset === 'dense') {                                 // ── legacy v2.1 richness ──
-    add('conference_table', ...nat(r, 0, -0.62), 0);        // big table top (8 baked chairs)
-    add('whiteboard', ...nat(r, 0.35, -0.90), F.S);
-    add('coffee_table', ...nat(r, -0.50, 0.10));
+  add('conference_table', ...img(r, 0, -0.05), fFace('down'), false, 0, true);  // 1 exec table, centered (8 baked chairs, essential)
+  podGaze(add, ...img(r, 0, 0.6), gazeDeg('up'), true);                         // 2 side desk pod — sitter faces the table (essential)
+  shelfRun(add, ...img(r, -0.82, -0.1), fFace('right'), 2, 1.2);                // 3,4 left-wall shelving run
+  add('lounge_sofa', ...img(r, 0.7, 0.15), fFace('left'));                      // 5 right sofa faces the table
+  add('coffee_table', ...img(r, 0.42, 0.15));                                   // 6
+  add('plant_large', ...img(r, -0.78, -0.78));                                  // 7 corner greens
+  add('plant_large', ...img(r, 0.78, -0.78));                                   // 8
+  add('wall_screen', ...img(r, 0, -0.88), fFace('down'));                       // 9 top wall screen faces the room
+  if (preset === 'dense') {                                                     // ── v2.1 richness ──
+    add('plant_large', ...img(r, -0.78, 0.78));                                 // 10
+    add('plant_large', ...img(r, 0.78, 0.78));                                  // 11
+    podGaze(add, ...img(r, -0.5, 0.6), gazeDeg('up'));                          // 12 second pod
   }
 };
