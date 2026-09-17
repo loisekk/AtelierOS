@@ -1,20 +1,20 @@
 import type { RoomBuilder } from '../layoutTypes';
-import { nat, F } from '../coords';
-import { cluster, shelfRun, backCorners } from '../builders';
+import { gazeDeg, img } from '../coords';
+import { cluster, podGaze } from '../builders';
 
-// ── AGENT SPACE: exactly 7 stations (2 round clusters + 5 screen-linked desks) ──
+// ── AGENT SPACE v3.4: image-space — two round clusters up top, a 3-desk bottom
+// row gazing up at them, a 2-desk mid row gazing down. 7 stations standard. ──
 export const agentSpace: RoomBuilder = (add, r, preset) => {
-  cluster(add, ...nat(r, -0.55, -0.65), 4);                // W1 — round, 4 chairs
-  add('workstation_set', ...nat(r, 0.55, -0.65), F.W, true); // W2 — east, sitter faces the desk
-  add('workstation_set', ...nat(r, 0.00, -0.20), F.S, true); // W3 — center, sitter faces north
-  cluster(add, ...nat(r, -0.55, 0.30), 3);                 // W4 — round, 3 chairs
-  add('workstation_set', ...nat(r, 0.55, 0.25), F.W, true); // W5
-  add('workstation_set', ...nat(r, -0.30, 0.70), F.N, true); // W6 — south row, sitter faces south
-  add('workstation_set', ...nat(r, 0.30, 0.70), F.N, true); // W7
-  if (preset !== 'sparse') backCorners(add, r, 0.44, 0.42);
-  if (preset === 'dense') {                                // ── legacy v2.1 library wall + extras ──
-    add('wall_screen', ...nat(r, 0, -0.90), F.S);
-    shelfRun(add, ...nat(r, -0.88, 0.0), F.E, 2, 2.1);
-    add('filing_cabinet', ...nat(r, 0.82, 0.60), F.W);
+  cluster(add, ...img(r, -0.45, -0.42), 4, true);           // 1-5  W1 — round, 4 chairs (essential)
+  cluster(add, ...img(r, 0.45, -0.42), 4, true);            // 6-10 W2 — round, 4 chairs (essential)
+  podGaze(add, ...img(r, -0.6, 0.55), gazeDeg('up'));       // 11 W3 — bottom row, sitters face the clusters
+  podGaze(add, ...img(r, 0.0, 0.55), gazeDeg('up'));        // 12 W4
+  podGaze(add, ...img(r, 0.6, 0.55), gazeDeg('up'));        // 13 W5
+  podGaze(add, ...img(r, -0.68, 0.05), gazeDeg('down'));    // 14 W6 — mid row, faces the bottom row
+  podGaze(add, ...img(r, 0.68, 0.05), gazeDeg('down'));     // 15 W7
+  if (preset === 'dense') {                                 // ── v2.1 extras ──
+    cluster(add, ...img(r, 0, 0.05), 4);                    // 16-20 mid-row filler cluster
+    add('plant_large', ...img(r, -0.8, 0.8));               // 21
+    add('plant_large', ...img(r, 0.8, 0.8));                // 22
   }
 };
