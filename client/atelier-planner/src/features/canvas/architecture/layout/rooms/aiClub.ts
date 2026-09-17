@@ -1,22 +1,23 @@
 import type { RoomBuilder } from '../layoutTypes';
-import { nat, F } from '../coords';
-import { backCorners } from '../builders';
+import { fFace, img } from '../coords';
+import { shelfRun } from '../builders';
 
-// ── AI CLUB LOUNGE: 4 sofas facing the social center, coffee table, shelf + sign ──
+// ── AI CLUB LOUNGE v3.4: image-space — 4 sofas gazing the social coffee table,
+// top-wall shelving accents, pendant over the center. ──
 export const aiClub: RoomBuilder = (add, r, preset) => {
-  add('coffee_table', ...nat(r, -0.15, 0.15));             // social center
-  add('lounge_sofa', ...nat(r, -0.15, -0.55), F.S);        // north — faces the table
-  add('lounge_sofa', ...nat(r, 0.55, 0.10), F.W);          // east — faces the table
-  add('lounge_sofa', ...nat(r, -0.75, 0.10), F.E);         // west — faces the table
-  add('lounge_sofa', ...nat(r, -0.15, 0.75), F.N);         // south — faces the table
-  add('bookshelf_large', ...nat(r, 0.82, 0.45), F.W);
-  add('wall_screen', ...nat(r, 0.20, -0.88), F.S);         // AI Club feature display
-  if (preset !== 'sparse') {
-    backCorners(add, r, 0.44, 0.44);
-    add('pendant', ...nat(r, -0.15, 0.15));
-  }
-  if (preset === 'dense') {                                // ── legacy v2.1 side tables ──
-    add('round_table', ...nat(r, 0.60, -0.68), 0);
-    add('coffee_table', ...nat(r, -0.60, 0.55), 0);
+  const c = img(r, 0, 0.1);                                   // social center
+  const R = Math.min(r.w, r.d) * 0.26;                        // sofa ring radius (world units)
+  add('coffee_table', ...c, 0, false, 0, true);               // 1 social center (essential)
+  add('lounge_sofa', c[0] - R, c[1], fFace('down'));          // 2 top sofa — faces the table
+  add('lounge_sofa', c[0] + R, c[1], fFace('up'));            // 3 bottom sofa — faces the table
+  add('lounge_sofa', c[0], c[1] - R, fFace('right'));         // 4 right sofa — faces the table
+  add('lounge_sofa', c[0], c[1] + R, fFace('left'));          // 5 left sofa — faces the table
+  shelfRun(add, ...img(r, 0, -0.86), fFace('down'), 2, 1.2);  // 6,7 top-wall shelving accents
+  add('pendant', ...img(r, 0, 0.1));                          // 8 pendant over the social center
+  add('plant_large', ...img(r, -0.78, 0.8));                  // 9,10 corner greens
+  add('plant_large', ...img(r, 0.78, 0.8));
+  if (preset === 'dense') {                                   // ── v2.1 side greens ──
+    add('plant_large', ...img(r, -0.78, -0.4));               // 11
+    add('plant_large', ...img(r, 0.78, -0.4));                // 12
   }
 };
