@@ -14,7 +14,17 @@ export interface RoomRect {
   d: number; // full depth
 }
 
-export type AddFn = (type: string, x: number, z: number, r?: number, ws?: boolean, dy?: number) => void;
+// v3.3 — the trailing `essential` slot carries per-item options:
+// the sparse preset keeps ONLY essential items (composer-side fault-tolerant filter).
+export type AddFn = (type: string, x: number, z: number, r?: number, ws?: boolean, dy?: number, essential?: boolean) => void;
+
+/** v3.3 — structured per-item options (documented companion of the AddFn essential slot). */
+export interface AddOptions {
+  scale?: number;
+  ws?: boolean;        // registers a workstation anchor (agent seating + navigation)
+  essential?: boolean; // survives the 'sparse' preset
+  meta?: Record<string, unknown>;
+}
 
 export type RoomBuilder = (add: AddFn, r: RoomRect, preset: LayoutPreset) => void;
 
