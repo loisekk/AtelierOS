@@ -1,5 +1,5 @@
 import type { AddFn, RoomRect } from './layoutTypes';
-import { degC } from './coords';
+import { degC, wsFacing } from './coords';
 
 /** 2x2 facing workstation pod — historical approved values (used by 'dense' preset) */
 export function pod(add: AddFn, cx: number, cz: number, dense = false) {
@@ -11,14 +11,15 @@ export function pod(add: AddFn, cx: number, cz: number, dense = false) {
   add('workstation_set', cx + offset, cz + depth, 0, true);
 }
 
-/** round table + explicit chairs (round_table ships WITHOUT chairs in the catalog) */
-export function cluster(add: AddFn, x: number, z: number, seats: 3 | 4 = 4) {
-  add('round_table', x, z);
-  add('chair', x, z - 1.05, Math.PI);
-  add('chair', x, z + 1.05, 0);
+/** round table + explicit chairs (round_table ships WITHOUT chairs in the catalog).
+ *  v3.3: optional `essential` flag threads through so the sparse preset keeps clusters. */
+export function cluster(add: AddFn, x: number, z: number, seats: 3 | 4 = 4, essential = false) {
+  add('round_table', x, z, 0, false, 0, essential);
+  add('chair', x, z - 1.05, Math.PI, false, 0, essential);
+  add('chair', x, z + 1.05, 0, false, 0, essential);
   if (seats === 4) {
-    add('chair', x - 1.05, z, -Math.PI / 2);
-    add('chair', x + 1.05, z, Math.PI / 2);
+    add('chair', x - 1.05, z, -Math.PI / 2, false, 0, essential);
+    add('chair', x + 1.05, z, Math.PI / 2, false, 0, essential);
   }
 }
 
@@ -68,4 +69,11 @@ export function corners(add: AddFn, r: RoomRect, fx = 0.42, fz = 0.4) {
 export function sofaSet(add: AddFn, x: number, z: number, rot = 0) {
   add('lounge_sofa', x, z, rot);
   add('coffee_table', x + Math.sin(rot) * 1.7, z + Math.cos(rot) * 1.7, 0);
+}
+
+// ── v3.3 additions ──────────────────────────────────────────────────────────
+/** Single workstation pod — one desk whose SITTER gazes compass `gaze`
+ *  (wsFacing math), registers a ws anchor. Optional essential flag. */
+export function podGaze(add: AddFn, x: number, z: number, gaze: number, essential = false): void {
+  add('workstation_set', x, z, wsFacing(gaze), true, 0, essential);
 }
