@@ -97,7 +97,7 @@ export function buildObjectRegistry(building: THREE.Object3D): RegisteredObject[
  * - Cluster coherence
  */
 export function validatePlacedItems(
-  items: { id: string; type: string; position: { x: number; z: number }; rotation?: number }[],
+  items: { id: string; type: string; position: { x: number; z: number }; y?: number; rotation?: number }[],
   walls?: { x: number; z: number; w: number; d: number }[]
 ): ValidationResult[] {
   const results: ValidationResult[] = [];
@@ -123,12 +123,21 @@ export function validatePlacedItems(
   });
 
   // 2. Overlap detection
+  // Some catalog factories bake elevation INTO the mesh group (pendant shade at
+  // y≈2.0 inside the group) while the group itself sits at y=0 — so stored meta
+  // y can't see it. BAKED_ELEVATION adds that known internal height so stacking
+  // false-positives (pendant above its table) stay silenced. Mirrors dy-awareness.
+  const BAKED_ELEVATION: Record<string, number> = { pendant: 1.9 };
+  const elevOf = (it: { y?: number }): number => (it.y ?? 0) + (BAKED_ELEVATION[(it as { type?: string }).type ?? ''] ?? 0);
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const a = items[i], b = items[j];
       const d = Math.hypot(a.position.x - b.position.x, a.position.z - b.position.z);
       const minDist = (a.type === 'plant_large' || b.type === 'plant_large') ? 0.3 : 0.5;
-      if (d < minDist) {
+      // dy-awareness: items intentionally stacked at different heights (laptops on
+      // tables, pendants above tables) share x/z by design — not a collision.
+      const dy = Math.abs(elevOf(a) - elevOf(b));
+      if (d < minDist && dy < 0.4) {
         results.push({
           level: 'WARNING',
           message: `${a.type} (${a.id}) overlaps ${b.type} (${b.id}) dist=${d.toFixed(2)}m`,
@@ -157,21 +166,35 @@ export function validatePlacedItems(
     });
   }
 
-  // 4. Cluster coherence (workstations should be grouped)
+  // 4. Cluster coherence (workstations should be grouped WITHIN each room)
+  // Legacy check measured scatter across the whole building, which always fires
+  // in a multi-room office (desks are SUPPOSED to be 16m apart across rooms).
+  // Per-room: warn only if one room's own workstations drift from their local
+  // centroid by more than the aisle threshold.
   const workstations = items.filter(it => it.type === 'workstation_set');
   if (workstations.length > 0) {
-    const avgX = workstations.reduce((sum, w) => sum + w.position.x, 0) / workstations.length;
-    const avgZ = workstations.reduce((sum, w) => sum + w.position.z, 0) / workstations.length;
-    const maxDist = workstations.reduce((max, w) => {
-      const d = Math.hypot(w.position.x - avgX, w.position.z - avgZ);
-      return Math.max(max, d);
-    }, 0);
-    if (maxDist > 8) {
-      results.push({
-        level: 'WARNING',
-        message: `Workstations scattered (max dist: ${maxDist.toFixed(1)}m from center)`,
-      });
-    }
+    const byRoom = new Map<string, typeof workstations>();
+    workstations.forEach(w => {
+      const room = inferRoom(w.position.x, w.position.z);
+      const list = byRoom.get(room) ?? [];
+      list.push(w);
+      byRoom.set(room, list);
+    });
+    byRoom.forEach((list, room) => {
+      if (room === 'exterior' || list.length < 2) return;
+      const avgX = list.reduce((sum, w) => sum + w.position.x, 0) / list.length;
+      const avgZ = list.reduce((sum, w) => sum + w.position.z, 0) / list.length;
+      const maxDist = list.reduce((max, w) => {
+        const d = Math.hypot(w.position.x - avgX, w.position.z - avgZ);
+        return Math.max(max, d);
+      }, 0);
+      if (maxDist > 8) {
+        results.push({
+          level: 'WARNING',
+          message: `Workstations scattered in ${room} (max dist: ${maxDist.toFixed(1)}m from room center)`,
+        });
+      }
+    });
   }
 
   return results;
@@ -233,3 +256,4 @@ export function exportLayoutToFile(items: ExportedLayoutItem[], filename: string
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
