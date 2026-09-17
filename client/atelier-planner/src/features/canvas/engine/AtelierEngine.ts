@@ -786,6 +786,7 @@ export class AtelierEngine {
       name: config?.name || item.name,
       price: item.price, seats: item.seats,
       position: { x: mesh.position.x, z: mesh.position.z },
+      y: mesh.position.y, // preserve stacking height (laptops on tables, pendants)
       rotation: rotY, role: item.role,
       status: item.role ? 'idle' : undefined,
       config
