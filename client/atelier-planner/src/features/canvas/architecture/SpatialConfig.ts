@@ -20,8 +20,32 @@ export const WAYPOINTS: Record<string, [number, number, number]> = {
 };
 
 export const MEETING_ANCHOR = V(WAYPOINTS.meeting_table).setY(2.4);
-// Brain chamber = the rotunda at the -X end
-export const BRAIN_FALLBACK = V([-16, 2.6, 0]);
+// Brain chamber = the circular rotunda. v4.0 center measured by wall-probe chord
+// fits (outer ring R≈6.1: west −17.2 / north z6.45 / south z−5.7; inner dais R≈4.7)
+// — concentric-solution center. GLB rotunda's dead center on the raised dais.
+export const BRAIN_FALLBACK = V([-11.2, 2.6, 0.4]);
+/** Raised circular dais the brain stands on (GLB-measured: dais floor = base + 0.73). */
+export const BRAIN_DAIS_Y = 0.73;
+
+/** DAG dispatch screen mount — GLB-probed Command Hub north wall (z=−3.76), which
+ *  the 'command' camera rig faces directly. The raised platform (offset 0.735)
+ *  continues into the hub; eye = 1.8 above it. Screen face looks +z (into room). */
+export const DAG_SCREEN_MOUNT = {
+  x: -4.5,
+  zWall: -3.76,      // wall face (screen hangs 0.12 in front of it)
+  hubFloorOffset: 0.735,
+  eye: 1.8,
+  screenOffset: 0.12,
+} as const;
+
+/** Camera boundary v1 — underside & void unreachable, dollhouse top view preserved. */
+export const CAMERA_LIMITS = {
+  minDistance: 6,              // close-in inspection stays usable
+  maxDistance: 95,             // zoom-out stops at a full exterior lot frame
+  minPolarAngle: 0,            // exact top-down dollhouse preserved (phi≈0 must stay legal)
+  maxPolarAngle: Math.PI * 0.485, // stops just ABOVE horizontal → sub-floor orbit impossible
+  minCameraYOverFloor: 1.2,    // per-frame hard clamp: never sink under the slab
+} as const;
 
 export type RoomId =
   | 'home_workspace' | 'brain_chamber' | 'showcase'
@@ -49,7 +73,7 @@ export const ROOM_ZONES: RoomZone[] = [
 ];
 
 export const ROOM_LABELS: { text: string; sub: string; accent: string; pos: [number, number, number] }[] = [
-  { text: 'CEO BRAIN CORE',     sub: 'Command Intelligence',  accent: '#9B5FD4', pos: [ -16.0, 4.6,  0.0 ] },
+  { text: 'CEO BRAIN CORE',     sub: 'Command Intelligence',  accent: '#9B5FD4', pos: [ -11.2, 4.6, 0.4 ] },
   { text: 'HOME WORKSPACE',     sub: 'CEO Private Office',    accent: '#C77B3F', pos: [ -16.0, 4.6, 12.0 ] },
   { text: 'WORKSPACE SHOWCASE', sub: 'Active Projects',       accent: '#49D8EC', pos: [ -16.0, 4.6, -12.0 ] },
   { text: 'COMMAND HUB',        sub: 'Dispatch & Monitor',    accent: '#49D8EC', pos: [ -4.5, 4.2,  0.0 ] },
@@ -63,7 +87,7 @@ export const ROOM_LABELS: { text: string; sub: string; accent: string; pos: [num
 
 export const CAMERA_RIGS = {
   office:    { pos: [ 26, 22, 26 ] as const,  lookAt: [ 0, 0, 0 ] as const,      fov: 40 },
-  ceo:       { pos: [ -2, 5.5, 0 ] as const,  lookAt: [ -16, 2.6, 0 ] as const,  fov: 35 },
+  ceo:       { pos: [ 2.8, 5.5, 0.4 ] as const,  lookAt: [ -11.2, 2.6, 0.4 ] as const, fov: 35 },
   command:   { pos: [ 8, 11, 10 ] as const,   lookAt: [ -4.5, 1, 0 ] as const,   fov: 45 },
   knowledge: { pos: [ 16, 11, 18 ] as const,  lookAt: [ 6, 1, 12 ] as const,     fov: 45 },
   top:       { pos: [ 0, 60, 0.01 ] as const, lookAt: [ 0, 0, 0 ] as const,      fov: 34 },
