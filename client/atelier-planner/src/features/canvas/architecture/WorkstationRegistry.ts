@@ -71,5 +71,18 @@ export class WorkstationRegistry {
     this.anchors = this.anchors.filter(a => !(a.id === id && !a.occupied));
   }
 
+  /** Rotation — re-yaw the manual seat linked to a desk when the desk rotates,
+   *  so a seated agent keeps facing its monitors after the desk turns. */
+  setRotByDesk(deskItemId: string, rotY: number): void {
+    const anchor = this.anchors.find(a => a.deskItemId === deskItemId);
+    if (anchor) anchor.rotY = rotY;
+  }
+
+  /** Deletion — drop the manual seat linked to a deleted desk. A seat with a
+   *  seated agent stays reserved so no deskless re-hire can claim it. */
+  removeByDesk(deskItemId: string): void {
+    this.anchors = this.anchors.filter(a => !(a.deskItemId === deskItemId && !a.occupied));
+  }
+
   getAllAnchors(): WorkstationAnchor[] { return [...this.anchors]; }
 }
