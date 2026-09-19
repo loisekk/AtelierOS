@@ -39,6 +39,14 @@ function App() {
   const dagStepsRef = useRef<DagStep[]>([]);
 
   const [view, setView] = useState<'office' | 'ceo' | 'command' | 'knowledge' | 'top'>('office');
+  const [labelsVisible, setLabelsVisible] = useState(true);
+  const toggleLabels = useCallback(() => {
+    setLabelsVisible(prev => {
+      const next = !prev;
+      engineRef.current?.setRoomLabelsVisible(next);
+      return next;
+    });
+  }, [engineRef]);
   const [brandColor, setBrandColor] = useState('#C75D3F');
   const [fireActive, setFireActive] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
@@ -331,6 +339,7 @@ function App() {
         openExport={() => setExportOpen(true)} openHelp={() => setHelpOpen(true)}
         openSettings={() => setSettingsOpen(true)} openDispatch={() => setDispatchModalOpen(true)}
         isListening={isListening} toggleListening={toggleListening}
+        labelsVisible={labelsVisible} toggleLabels={toggleLabels}
       />
 
       <div className="flex flex-1 overflow-hidden">
