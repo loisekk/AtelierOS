@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DAG_SCREEN_MOUNT } from '../architecture/SpatialConfig';
 
 /** Shape of a DAG step streamed from the Cognitive Engine / App.tsx (structural match). */
 export interface DagStep {
@@ -41,18 +42,31 @@ export class ScreenManager {
     this.hudLight.position.set(brain.x, this.hudBaseY - 0.2, brain.z + 0.5);
   }
 
-  public createDAGScreen(scene: THREE.Scene, meetingAnchor: THREE.Vector3) {
+  /** DAG dispatch screen — a scene-level FIXTURE on the Command Hub north wall.
+   *  v1.1 fix: the old placement used absolute world y=2.3 (8+ units BELOW the
+   *  interior floor at ~10.69) anchored to a stale placeholder waypoint — the
+   *  screen floated under the building. Now: GLB-probed wall mount, eye level
+   *  above the hub's raised platform, face toward the room. Transform-only
+   *  change: texture/streaming logic untouched, not in placedItems (Customize-
+   *  proof), validateLayout ignores it. */
+  public createDAGScreen(scene: THREE.Scene, interiorFloorY: number) {
     const canvas = document.createElement('canvas');
     canvas.width = 1024; canvas.height = 512;
     const ctx = canvas.getContext('2d')!;
     const texture = new THREE.CanvasTexture(canvas);
 
+    // Mount (SpatialConfig, GLB-probed): hub floor = interior + 0.735, wall face z=−3.76
+    const y = interiorFloorY + DAG_SCREEN_MOUNT.hubFloorOffset + DAG_SCREEN_MOUNT.eye;
+    const zFrame = DAG_SCREEN_MOUNT.zWall + DAG_SCREEN_MOUNT.screenOffset;      // proud of wall
+    const zScreen = zFrame + 0.035;                                             // just in front of frame
+
     const frame = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.4, 0.12), new THREE.MeshStandardMaterial({ color: 0x292827, roughness: 0.4, metalness: 0.6 }));
-    frame.position.set(meetingAnchor.x, 2.3, meetingAnchor.z - 2.66);
+    frame.position.set(DAG_SCREEN_MOUNT.x, y, zFrame);
     scene.add(frame);
 
     const mesh = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), new THREE.MeshBasicMaterial({ map: texture, transparent: true, side: THREE.DoubleSide }));
-    mesh.position.set(meetingAnchor.x, 2.3, meetingAnchor.z - 2.58);
+    mesh.position.set(DAG_SCREEN_MOUNT.x, y, zScreen);
+    // PlaneGeometry's face is +z by default → looks into the room (wall is at −z). No rotation needed.
     mesh.userData.dagCtx = ctx;
     mesh.userData.dagTexture = texture;
     scene.add(mesh);
