@@ -40,20 +40,28 @@
       conventions verified preserved, E/F design decisions captured,
       router.py existence confirmed (Test-Path True),
       **tripo_node single-mesh discovery** (root cause of A revised).
-- [ ] Commit green-state checkpoint (13 files of v4.0 work + memory-bank/,
-      one file per commit per user instruction; then `bun run typecheck` +
-      `bun run lint` to establish where the dirty tree actually stands).
-- [ ] A: initBrain zone-center placement (immune to tripo_node null anchor)
-      + regex tighten.
-- [ ] C: `shelfWall` clamping builder + swap 7 call-sites.
-- [ ] D: catalog screen userData (+ clones), drawRoomBoard, roomLogs routing,
-      updateRoomBoards + hookups.
-- [ ] Verify: typecheck 0/0, lint 0/0, resetOffice + validateLayout, visual
-      screenshots (chamber, shelves, boards).
+- [x] Commit green-state checkpoint: **21 commits, exactly 1 file each**
+      (11 v4.0 files + 7 memory-bank files + gitignore/types bundling note:
+      first accidental 3-file commit was squashed away by the sequential
+      re-commit chain after soft reset).
+- [x] A: initBrain zone-center placement (immune to tripo_node null anchor)
+      + BRAIN_DAIS_Y preserved — committed "AtelierEngine: zone-center brain
+      placement (v4.1) + RoomBoards hooks".
+- [x] C: `shelfWall` clamping builder + swap 7 call-sites — committed
+      (builders + 6 room files).
+- [x] D: RoomBoards.ts module (self-contained: zone lookup, room log buffers,
+      lazy canvas init, drawBoard), catalog isScreen/screenType tagging +
+      screenGlowMat.clone() (repairs Phase 11), engine hooks in
+      updateAgentLog/updateAgentStatus/autoFurnish/clearAll + placeItem
+      room_board init — all committed.
+- [x] Gates: `bun run typecheck` exit 0 · `bun run lint` exit 0 (post A+C+D).
+- [ ] Browser verify: resetOffice() → validateLayout() → screenshots
+      (chamber A+B, shelves C); manual log test:
+      `updateAgentLog('<agentId>','TEST: board routing works')` → board lights up.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
-- [ ] E: fullscreen board viewer (deferred until D confirmed; design in
-      activeContext.md).
+- [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
+      design in activeContext.md).
 - [ ] Phase 13: real CLI adapters (Bun.spawn opencode/claude).
 - [ ] Phase 14: navmesh pathfinding (@recast-navigation/three).
 
