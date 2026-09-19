@@ -4,17 +4,16 @@ Working tree note: **10 modified + 3 untracked files** = in-flight v4.0 work
 (hand-placed default layout, RotationHud, user-layout.json). COMMIT BEFORE EDITS:
 `git add -A; git commit -m "green state checkpoint"`.
 
-## Task decode & status
+## Task decode & status — UPDATED: A, C, D IMPLEMENTED (this session)
 
 | # | Symptom | Status |
 |---|---|---|
-| A | Brain platform/ring/particles on the ROOF (img-1) | Fixable now — root cause VERIFIED below |
-| B | 8 seats not around CEO Brain (img-3) | Follows from A + `resetOffice()`; v3.4 ring chairs exist in data |
-| C | Shelf runs pierce walls (img-4) | Fixable now — new clamping builder |
-| D | Wall screens = live room boards (img-2) | Buildable now; design below; `isScreen` gap VERIFIED |
-| E | Fullscreen "big view" board | DEFERRED (only after D confirmed) |
-| F | Background + panels match img-5 | BLOCKED — needs 5 UI files from user: `styles/index.css`, `TopBar.tsx`, `LeftPanel.tsx`, `RightPanel.tsx`, `CanvasViewport.tsx` (if it exists). Deferral decision was by user instruction: big-screen viewer only after D confirmed. |
-| E | **Task E — fullscreen "big screen" board viewer** | DEFERRED by user instruction (only after D works). DESIGN (keep — lives only in session history): raycast-click a room_board mesh → fullscreen HTML overlay rendering the same `RoomBoardData` at full canvas size (room name, agents+statuses, logs). Build after D is confirmed working. |
+| A | Brain on the roof / on the lawn (img-1) | ✅ FIXED — v4.1 zone-center placement committed |
+| B | 8 seats not around CEO Brain (img-3) | ✅ Resolves with A — ring already authored at chamber center (−16.25, 0); verify via resetOffice() |
+| C | Shelf runs pierce walls (img-4) | ✅ FIXED — `shelfWall` builder + all 7 sites swapped, committed |
+| D | Wall screens = live room boards (img-2) | ✅ IMPLEMENTED — `RoomBoards.ts` module + catalog tagging + 6 engine hooks, committed |
+| E | Fullscreen "big view" board | DEFERRED (only after D confirmed in browser) |
+| F | Background + panels match img-5 | BLOCKED — needs 5 UI files from user: `styles/index.css`, `TopBar.tsx`, `LeftPanel.tsx`, `RightPanel.tsx`, `CanvasViewport.tsx` (if it exists). |
 
 ---
 
