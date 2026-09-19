@@ -6,7 +6,7 @@ import { createAgentAvatar } from '../../furniture/factories/avatars';
 import type { PlacedItemMeta, AgentStatus, AgentConfig } from '../../ai-agents/types';
 import { addRoomLabels } from '../architecture/roomLabels';
 import { loadBuildingGLB } from '../architecture/BuildingLoader';
-import { BOUNDS, BRAIN_FALLBACK, CAMERA_RIGS, EGRESS_POINTS, MEETING_ANCHOR, V, WORLD } from '../architecture/SpatialConfig';
+import { BOUNDS, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, V, WORLD } from '../architecture/SpatialConfig';
 import { WorkstationRegistry } from '../architecture/WorkstationRegistry';
 import { debugDrawZones } from '../architecture/RoomScanner';
 import { getAutoLayout, getLayoutStats, DEFAULT_OFFICE_LAYOUT_VERSION } from '../architecture/RoomFurnisher';
@@ -16,9 +16,17 @@ import { ScreenManager } from './ScreenManager';
 import { AgentController } from './AgentController';
 import type { DagStep } from './ScreenManager';
 
+// ── Rotation (Customize Mode): Q/E = ±15° fine, R/Shift+R = ±45° snap, wheel = ±15° ──
+const ROT_FINE = Math.PI / 12; // 15°
+const ROT_SNAP = Math.PI / 4;  // 45°
+const normRot = (v: number): number => ((v % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+const toDeg = (v: number): number => Math.round((normRot(v) * 180) / Math.PI);
+
 interface EngineCallbacks {
   onStatsUpdate: (items: PlacedItemMeta[]) => void;
   onSelect: (id: string | null) => void;
+  /** Live ghost yaw (0–360°) — drives the rotation HUD readout while placing. */
+  onGhostRotate?: (degrees: number) => void;
 }
 
 export class AtelierEngine {
@@ -52,7 +60,11 @@ export class AtelierEngine {
   private dragOffset = new THREE.Vector3();
 
   private brandColor = '#B96D3D';
-  private history: { type: 'place' | 'delete'; item: PlacedItemMeta }[] = [];
+  /** 'place'/'delete' undo — plus 'rotate' entries so rotations are fully undoable. */
+  private history: (
+    | { type: 'place' | 'delete'; item: PlacedItemMeta }
+    | { type: 'rotate'; id: string; before: number; after: number }
+  )[] = [];
   private _autoFurnishing = false;
   public customizing = false;
 
@@ -73,7 +85,7 @@ export class AtelierEngine {
   private workstationRegistry: WorkstationRegistry | null = null;
 
   /** Active canonical layout preset (v3.2 layout system). */
-  public layoutPreset: LayoutPreset = 'standard';
+  public layoutPreset: LayoutPreset = 'default';
 
   private animFrameId = 0;
   private onPointerDown!: (e: PointerEvent) => void;
@@ -116,7 +128,11 @@ export class AtelierEngine {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.target.set(0, 0, 0);
-    this.controls.maxPolarAngle = Math.PI / 2 - 0.05;
+    // Camera boundary v1: underside & void unreachable (dollhouse top view preserved).
+    this.controls.minDistance = CAMERA_LIMITS.minDistance;
+    this.controls.maxDistance = CAMERA_LIMITS.maxDistance;
+    this.controls.minPolarAngle = CAMERA_LIMITS.minPolarAngle;
+    this.controls.maxPolarAngle = CAMERA_LIMITS.maxPolarAngle;
     this.controls.update();
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
@@ -175,7 +191,7 @@ export class AtelierEngine {
       this.autoFurnish();
       addRoomLabels(this.scene, WORLD.floorY);
       this.initBrain(this.detectBrainAnchor(building));
-      this.screenManager.createDAGScreen(this.scene, MEETING_ANCHOR);
+      this.screenManager.createDAGScreen(this.scene, WORLD.floorY);
     }).catch(err => console.error("Failed to load building GLB", err));
 
     this.screenManager = new ScreenManager();
@@ -237,6 +253,9 @@ export class AtelierEngine {
     layout.forEach(entry => {
       const placedId = this.placeItem(entry.type, new THREE.Vector3(entry.x, WORLD.floorY, entry.z), entry.r ?? 0, undefined, entry.dy ?? 0);
       if (entry.ws) {
+        // Meta carries ws too (dump/re-bake parity + delete-undo guard).
+        const meta = this.placedItems[this.placedItems.length - 1];
+        meta.ws = true;
         this.workstationRegistry!.registerManualWorkstation(new THREE.Vector3(entry.x, WORLD.floorY, entry.z), entry.r ?? 0, placedId);
       }
     });
@@ -470,10 +489,10 @@ export class AtelierEngine {
   }
 
   public setBrainCenter(x: number, z: number) {
-    if (this.brainGroup) this.brainGroup.position.set(x, WORLD.floorY, z);
-    this.brainAnchor.set(x, WORLD.floorY + 2.4, z);
-    this.brainAccentLight.position.set(x, WORLD.floorY + 3.9, z);
-    this.screenManager.positionHUD(new THREE.Vector3(x, WORLD.floorY + 2.4, z));
+    if (this.brainGroup) this.brainGroup.position.set(x, WORLD.floorY + BRAIN_DAIS_Y, z);
+    this.brainAnchor.set(x, WORLD.floorY + BRAIN_DAIS_Y + 2.4, z);
+    this.brainAccentLight.position.set(x, WORLD.floorY + BRAIN_DAIS_Y + 3.9, z);
+    this.screenManager.positionHUD(new THREE.Vector3(x, WORLD.floorY + BRAIN_DAIS_Y + 2.4, z));
   }
 
   private detectBrainAnchor(root: THREE.Object3D): THREE.Vector3 | null {
@@ -490,9 +509,9 @@ export class AtelierEngine {
   private initBrain(anchor: THREE.Vector3 | null) {
     const src = anchor ?? BRAIN_FALLBACK;
     const g = this.brainGroup = new THREE.Group();
-    g.position.set(src.x, WORLD.floorY, src.z);
+    g.position.set(src.x, WORLD.floorY + BRAIN_DAIS_Y, src.z);
 
-    this.brainAccentLight.position.set(src.x, WORLD.floorY + 3.9, src.z);
+    this.brainAccentLight.position.set(src.x, WORLD.floorY + BRAIN_DAIS_Y + 3.9, src.z);
 
     const platform = new THREE.Mesh(new THREE.CylinderGeometry(3.2, 3.6, 0.3, 32), new THREE.MeshStandardMaterial({ color: 0x554039, roughness: 0.6 }));
     platform.position.set(0, 0.15, 0);
@@ -536,8 +555,8 @@ export class AtelierEngine {
     g.add(this.brainLight);
 
     this.scene.add(g);
-    this.brainAnchor = new THREE.Vector3(src.x, WORLD.floorY + 2.4, src.z);
-    this.screenManager.positionHUD(new THREE.Vector3(src.x, WORLD.floorY + 2.4, src.z));
+    this.brainAnchor = new THREE.Vector3(src.x, WORLD.floorY + BRAIN_DAIS_Y + 2.4, src.z);
+    this.screenManager.positionHUD(new THREE.Vector3(src.x, WORLD.floorY + BRAIN_DAIS_Y + 2.4, src.z));
   }
 
   public updateDAG(steps: DagStep[]) { this.screenManager.updateDAG(this.scene, steps); }
@@ -578,6 +597,7 @@ export class AtelierEngine {
   public setSelectedItemType(type: string | null) {
     this.selectedItemType = type;
     this.ghostRotY = 0;
+    this.callbacks.onGhostRotate?.(0);
     this.controls.enableZoom = !type;
     if (type) this.setSelected(null);
     if (this.ghostItem) {
@@ -585,6 +605,35 @@ export class AtelierEngine {
       this.scene.remove(this.ghostItem);
       this.ghostItem = null;
     }
+  }
+
+  // ── ROTATION (Customize Mode) ────────────────────────────────────────────────
+  /** Rotate the placement ghost. Works even before the ghost mesh exists (keys). */
+  public rotateGhost(delta: number) {
+    this.ghostRotY += delta;
+    if (this.ghostItem) this.ghostItem.rotation.y = this.ghostRotY;
+    this.callbacks.onGhostRotate?.(toDeg(this.ghostRotY));
+  }
+
+  /**
+   * Rotate the selected placed item in place (Customize Mode only).
+   * Undoable (pushes a 'rotate' history entry) and workstation-safe: a desk
+   * linked to a manual ws anchor re-yaws the seat so agents keep facing the
+   * monitors. Returns true when a rotation was applied.
+   */
+  public rotateSelected(delta: number): boolean {
+    if (!this.customizing || !this.selectedId) return false;
+    const mesh = this.meshes.get(this.selectedId);
+    const item = this.placedItems.find(i => i.id === this.selectedId);
+    if (!mesh || !item) return false;
+    const before = normRot(item.rotation);
+    const after = normRot(before + delta);
+    mesh.rotation.y = after;
+    item.rotation = after;
+    this.workstationRegistry?.setRotByDesk(this.selectedId, after);
+    this.history.push({ type: 'rotate', id: item.id, before, after });
+    this.callbacks.onStatsUpdate(this.placedItems); // clone-quirk: triggers React re-render
+    return true;
   }
 
   private getMouseIntersection(e: MouseEvent) {
@@ -614,9 +663,14 @@ export class AtelierEngine {
         let n: THREE.Object3D | null = hits[0].object;
         while (n) {
           if (n.userData.placedId) {
-            if (n.userData.fixed && !this.customizing) break;
-            if (this.selectedId === n.userData.placedId) this.setSelected(null);
-            else { this.setSelected(n.userData.placedId); this.draggingId = n.userData.placedId; }
+            // v4.0: furniture is FROZEN outside Customize Mode — clicking it can
+            // never select or start a drag; camera orbit/pan/zoom stay fully alive.
+            if (this.customizing) {
+              if (this.selectedId === n.userData.placedId) this.setSelected(null);
+              else { this.setSelected(n.userData.placedId); this.draggingId = n.userData.placedId; }
+            } else {
+              this.setSelected(null);
+            }
             break;
           }
           n = n.parent;
@@ -639,7 +693,7 @@ export class AtelierEngine {
         if (dx * dx + dy * dy > 9) pointerMoved = true;
       }
 
-      if (this.draggingId) {
+      if (this.draggingId && this.customizing) {
         const hit = this.getMouseIntersection(e);
         if (hit) {
           const item = this.placedItems.find(i => i.id === this.draggingId);
@@ -683,6 +737,7 @@ export class AtelierEngine {
         if (hit) {
           this.placeItem(this.selectedItemType, hit.point, this.ghostRotY);
           this.ghostRotY = 0;
+          this.callbacks.onGhostRotate?.(0);
         }
       }
       pointerDownPos = null;
@@ -691,27 +746,29 @@ export class AtelierEngine {
     this.onWheel = (e) => {
       if (this.selectedItemType && this.ghostItem) {
         e.preventDefault();
-        this.ghostRotY += (e.deltaY > 0 ? -1 : 1) * (Math.PI / 12);
-        this.ghostItem.rotation.y = this.ghostRotY;
+        this.rotateGhost((e.deltaY > 0 ? -1 : 1) * ROT_FINE);
+      } else if (this.customizing && this.selectedId && !this.selectedItemType) {
+        // Selected item in Customize Mode: wheel = fine rotation. Camera zoom is
+        // disabled for the selection (see setSelected) so the two never fight.
+        e.preventDefault();
+        this.rotateSelected((e.deltaY > 0 ? -1 : 1) * ROT_FINE);
       }
     };
 
     this.onKeyDown = (e) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'r' || e.key === 'R') {
-        if (this.ghostItem) {
-          this.ghostRotY += Math.PI / 4;
-          this.ghostItem.rotation.y = this.ghostRotY;
-        } else if (this.selectedId && this.customizing) {
-          const mesh = this.meshes.get(this.selectedId);
-          if (mesh && !mesh.userData.fixed) {
-            mesh.rotation.y += Math.PI / 4;
-            const item = this.placedItems.find(i => i.id === this.selectedId);
-            if (item) item.rotation = mesh.rotation.y;
-          }
-        }
-      }
+      if (e.ctrlKey || e.metaKey || e.altKey) return; // leave Ctrl+Z etc. to App
+      const delta =
+        e.key === 'r' || e.key === 'R' ? (e.shiftKey ? -ROT_SNAP : ROT_SNAP) :
+        e.key === 'q' || e.key === 'Q' ? -ROT_FINE :
+        e.key === 'e' || e.key === 'E' ? ROT_FINE : 0;
+      if (!delta) return;
+      // While placing: rotate the ghost. Otherwise: rotate the selected item
+      // in place (Customize Mode only — fixed furniture included, matching
+      // deleteSelected's customize-mode permissions).
+      if (this.selectedItemType || this.ghostItem) this.rotateGhost(delta);
+      else if (this.selectedId && this.customizing) this.rotateSelected(delta);
     };
 
     this.renderer.domElement.addEventListener('pointerdown', this.onPointerDown);
@@ -801,6 +858,9 @@ export class AtelierEngine {
   public setSelected(id: string | null) {
     this.selectedId = id;
     this.selectionRing.visible = !!id;
+    // While an item is selected in Customize Mode the wheel rotates it —
+    // disable camera zoom for that selection so the two never fight.
+    this.controls.enableZoom = !this.selectedItemType && !(this.customizing && !!id);
     if (id) {
       const item = this.placedItems.find(i => i.id === id);
       if (item) {
@@ -845,6 +905,7 @@ export class AtelierEngine {
     const idx = this.placedItems.findIndex(i => i.id === id);
     if (idx > -1) { this.history.push({ type: 'delete', item: this.placedItems[idx] }); this.placedItems.splice(idx, 1); }
     this.releaseWorkstation(id);
+    this.workstationRegistry?.removeByDesk(id); // desk gone → its free manual seat goes with it
     this.setSelected(null);
     this.callbacks.onStatsUpdate(this.placedItems);
   }
@@ -868,10 +929,23 @@ export class AtelierEngine {
     } else if (last.type === 'delete') {
       const mesh = ITEM_CATALOG[last.item.type].factory(this.brandColor);
       mesh.userData.placedId = last.item.id;
-      mesh.position.set(last.item.position.x, WORLD.floorY, last.item.position.z);
+      // Restore the EXACT placement — stacking height AND rotated yaw come back
+      // as they were (delete-undo used to flatten both).
+      mesh.position.set(last.item.position.x, last.item.y ?? WORLD.floorY, last.item.position.z);
+      mesh.rotation.y = last.item.rotation;
       this.scene.add(mesh); this.meshes.set(last.item.id, mesh);
       this.screenManager.updateAgentScreenStatus(mesh, last.item.status || 'idle');
       this.placedItems.push(last.item);
+    } else if (last.type === 'rotate') {
+      // Rotation undo: restore the previous yaw on the item, its mesh, and any
+      // linked workstation seat — exactly like place/delete undo above.
+      const item = this.placedItems.find(i => i.id === last.id);
+      const mesh = this.meshes.get(last.id);
+      if (item && mesh) {
+        item.rotation = last.before;
+        mesh.rotation.y = last.before;
+        this.workstationRegistry?.setRotByDesk(last.id, last.before);
+      }
     }
     this.callbacks.onStatsUpdate(this.placedItems);
   }
@@ -1012,6 +1086,11 @@ export class AtelierEngine {
     if (this.brainLight) this.brainLight.intensity = 3 + Math.sin(t * 2) * 1.5;
 
     this.controls.update();
+    // Per-frame camera safety net (Camera boundary v1): even pan-drags that dodge
+    // OrbitControls' spherical limits can never take the camera under the slab.
+    if (this.camera.position.y < WORLD.floorY + CAMERA_LIMITS.minCameraYOverFloor) {
+      this.camera.position.y = WORLD.floorY + CAMERA_LIMITS.minCameraYOverFloor;
+    }
     this.renderer.render(this.scene, this.activeCamera);
   };
 
