@@ -2,6 +2,7 @@ import { ROOM_ZONES } from './SpatialConfig';
 import type { RoomId } from './SpatialConfig';
 import type { LayoutEntry, RoomRect, LayoutPreset, AddFn, RoomBuilder } from './layout/layoutTypes';
 import * as rooms from './layout/roomLayouts';
+import { USER_DEFAULT_LAYOUT } from './layout/userDefaultLayout';
 import * as catalogModule from '../../furniture/catalog';
 
 /**
@@ -18,7 +19,7 @@ import * as catalogModule from '../../furniture/catalog';
  * preset. v3.4 adds: 10% inset clamp (kills corner overshoot), boot
  * console.table of id → center, KNOWLEDGE_AICLUB_SWAP escape hatch.
  */
-export const DEFAULT_OFFICE_LAYOUT_VERSION = '3.4.1';
+export const DEFAULT_OFFICE_LAYOUT_VERSION = '4.0.0';
 export type { LayoutEntry, LayoutPreset } from './layout/layoutTypes';
 
 export interface RoomStat { count: number; ws: number; types: Record<string, number>; skipped: number; }
@@ -103,6 +104,32 @@ const clampToRoom = (r: RoomRect, x: number, z: number): [number, number] => [
 ];
 
 function buildLayout(preset: LayoutPreset) {
+  // v4.0 'default' = the CEO's hand-placed office, baked verbatim into
+  // userDefaultLayout.ts. No composition, no clamping — world coords as placed.
+  // Per-room census via point-in-rect attribution (zones-first, same ruler as
+  // the composed presets) with nearest-center fallback for atrium/corridor strays.
+  if (preset === 'default') {
+    const stats: Record<string, RoomStat> = {};
+    const ids = Object.keys(ROOM_BUILDERS) as RoomId[];
+    for (const id of ids) stats[id] = { count: 0, ws: 0, types: {}, skipped: 0 };
+    const rects = ids.map((id) => ({ id, rect: rectFor(id) }));
+    for (const e of USER_DEFAULT_LAYOUT) {
+      let hit = rects.find(({ rect }) =>
+        Math.abs(e.x - rect.x) <= rect.w / 2 && Math.abs(e.z - rect.z) <= rect.d / 2);
+      if (!hit) {
+        hit = rects.reduce((best, cur) => {
+          const d = (p: typeof cur) => (e.x - p.rect.x) ** 2 + (e.z - p.rect.z) ** 2;
+          return d(cur) < d(best) ? cur : best;
+        }, rects[0]);
+      }
+      const s = stats[hit.id];
+      s.count += 1;
+      s.types[e.type] = (s.types[e.type] ?? 0) + 1;
+      if (e.ws) s.ws += 1;
+    }
+    return { layout: USER_DEFAULT_LAYOUT.map((e) => ({ ...e })), stats };
+  }
+
   const L: LayoutEntry[] = [];
   const stats: Record<string, RoomStat> = {};
   const warned = new Set<string>();
@@ -142,12 +169,12 @@ function buildLayout(preset: LayoutPreset) {
   return { layout: L, stats };
 }
 
-export function getAutoLayout(preset: LayoutPreset = 'standard'): LayoutEntry[] {
+export function getAutoLayout(preset: LayoutPreset = 'default'): LayoutEntry[] {
   return buildLayout(preset).layout;
 }
 
 /** Per-room furniture census — powers the count-validation criterion. */
-export function getLayoutStats(preset: LayoutPreset = 'standard'): Record<string, RoomStat> {
+export function getLayoutStats(preset: LayoutPreset = 'default'): Record<string, RoomStat> {
   return buildLayout(preset).stats;
 }
 
