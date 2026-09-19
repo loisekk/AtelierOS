@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { ROOM_ZONES } from '../architecture/SpatialConfig';
+import { roomBannerFor } from '../architecture/roomLabels';
 import type { PlacedItemMeta } from '../../ai-agents/types';
 import type { ScreenManager } from './ScreenManager';
 
@@ -83,16 +84,22 @@ export class RoomBoards {
       }
 
       const { ctx, texture } = c.userData.screenData;
+      const banner = roomBannerFor(data.room);
       ctx.fillStyle = '#0A1420'; ctx.fillRect(0, 0, 512, 256);
       ctx.strokeStyle = 'rgba(73, 216, 236, 0.7)'; ctx.lineWidth = 2; ctx.strokeRect(8, 8, 496, 240);
-      ctx.font = 'bold 22px Archivo, sans-serif'; ctx.fillStyle = '#49D8EC';
-      ctx.fillText(data.room.replace(/_/g, ' ').toUpperCase(), 24, 40);
-      ctx.font = '16px JetBrains Mono, monospace'; ctx.fillStyle = '#8A8A8A';
-      ctx.fillText(`AGENTS IN ROOM: ${data.agents.length}`, 24, 70);
+      // Header mirrors the room banner: title + subtitle, centered
+      ctx.textAlign = 'center';
+      ctx.font = 'bold 24px Archivo, sans-serif'; ctx.fillStyle = '#FFFFFF';
+      ctx.fillText((banner?.text ?? data.room.replace(/_/g, ' ')).toUpperCase(), 256, 38);
+      ctx.font = '15px Manrope, sans-serif'; ctx.fillStyle = banner?.accent ?? '#49D8EC';
+      if (banner?.sub) ctx.fillText(banner.sub, 256, 62);
+      ctx.textAlign = 'left';
+      ctx.font = '14px JetBrains Mono, monospace'; ctx.fillStyle = '#8A8A8A';
+      ctx.fillText(`AGENTS IN ROOM: ${data.agents.length}`, 24, 90);
       data.agents.slice(0, 4).forEach((a, i) => {
         ctx.fillStyle = a.status === 'working' ? '#059669' : a.status === 'error' ? '#DC2626'
           : a.status === 'waiting' ? '#D97706' : a.status === 'celebrate' ? '#0EA5E9' : '#8A8A8A';
-        ctx.fillText(`● ${a.name} — ${a.status.toUpperCase()}`, 24, 96 + i * 22);
+        ctx.fillText(`● ${a.name} — ${a.status.toUpperCase()}`, 24, 112 + i * 20);
       });
       ctx.fillStyle = '#4A4A52'; ctx.fillRect(24, 186, 464, 1);
       ctx.font = '13px JetBrains Mono, monospace'; ctx.fillStyle = '#0EA5E9';
