@@ -14,6 +14,7 @@ export function useAtelier(containerRef: RefObject<HTMLDivElement | null>) {
   const engineRef = useRef<AtelierEngine | null>(null);
   const [placedItems, setPlacedItems] = useState<PlacedItemMeta[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [ghostDegrees, setGhostDegrees] = useState(0);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -22,6 +23,8 @@ export function useAtelier(containerRef: RefObject<HTMLDivElement | null>) {
       // Engine mutates its internal array in place — clone to trigger re-render.
       onStatsUpdate: (items) => setPlacedItems([...items]),
       onSelect: (id) => setSelectedId(id),
+      // Live ghost yaw for the rotation HUD (Customize Mode placement).
+      onGhostRotate: (degrees) => setGhostDegrees(degrees),
     });
     engineRef.current = engine;
 
@@ -39,5 +42,5 @@ export function useAtelier(containerRef: RefObject<HTMLDivElement | null>) {
     };
   }, [containerRef]);
 
-  return { engineRef, placedItems, selectedId };
+  return { engineRef, placedItems, selectedId, ghostDegrees };
 }
