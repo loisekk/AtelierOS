@@ -55,8 +55,15 @@
       updateAgentLog/updateAgentStatus/autoFurnish/clearAll + placeItem
       room_board init — all committed.
 - [x] Gates: `bun run typecheck` exit 0 · `bun run lint` exit 0 (post A+C+D).
+- [x] Browser-independent work complete; banner system v2 shipped:
+      roomLabels.ts rewritten (banners derived from ROOM_ZONES centers,
+      transparent dark-glass pill style, returns toggleable group),
+      RoomBoards header mirrors banner (title + accent subtitle),
+      AtelierEngine.setRoomLabelsVisible(), TopBar "Labels" toggle wired
+      through App state. Gates: typecheck 0, lint 0. Committed ×5 (1 file each).
 - [ ] Browser verify: resetOffice() → validateLayout() → screenshots
-      (chamber A+B, shelves C); manual log test:
+      (chamber A+B, shelves C, banners centered + transparent + toggle);
+      manual log test:
       `updateAgentLog('<agentId>','TEST: board routing works')` → board lights up.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
