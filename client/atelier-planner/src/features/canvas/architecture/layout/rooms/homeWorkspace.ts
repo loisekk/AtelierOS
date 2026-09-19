@@ -1,6 +1,6 @@
 import type { RoomBuilder } from '../layoutTypes';
 import { fFace, gazeDeg, img } from '../coords';
-import { podGaze, shelfRun } from '../builders';
+import { podGaze, shelfWall } from '../builders';
 
 // ── HOME WORKSPACE v3.4: image-space composition — exec table centered, side
 // desk pod behind it (sitter faces the table), left-wall shelving, right sofa
@@ -8,7 +8,7 @@ import { podGaze, shelfRun } from '../builders';
 export const homeWorkspace: RoomBuilder = (add, r, preset) => {
   add('conference_table', ...img(r, 0, -0.05), fFace('down'), false, 0, true);  // 1 exec table, centered (8 baked chairs, essential)
   podGaze(add, ...img(r, 0, 0.6), gazeDeg('up'), true);                         // 2 side desk pod — sitter faces the table (essential)
-  shelfRun(add, ...img(r, -0.82, -0.1), fFace('right'), 2, 1.2);                // 3,4 left-wall shelving run
+  shelfWall(add, r, -0.82, -0.1, fFace('right'), 2, 1.2);                // 3,4 left-wall shelving run
   add('lounge_sofa', ...img(r, 0.7, 0.15), fFace('left'));                      // 5 right sofa faces the table
   add('coffee_table', ...img(r, 0.42, 0.15));                                   // 6
   add('plant_large', ...img(r, -0.78, -0.78));                                  // 7 corner greens
