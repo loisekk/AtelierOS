@@ -84,6 +84,7 @@ export class AtelierEngine {
   private screenManager: ScreenManager;
   private agentController: AgentController;
   private roomBoards: RoomBoards | null = null;
+  private roomLabelsGroup: THREE.Group | null = null;
   private workstationRegistry: WorkstationRegistry | null = null;
 
   /** Active canonical layout preset (v3.2 layout system). */
@@ -191,7 +192,7 @@ export class AtelierEngine {
 
       this.workstationRegistry = new WorkstationRegistry(building);
       this.autoFurnish();
-      addRoomLabels(this.scene, WORLD.floorY);
+      this.roomLabelsGroup = addRoomLabels(this.scene, WORLD.floorY);
       this.initBrain(this.detectBrainAnchor(building));
       this.screenManager.createDAGScreen(this.scene, WORLD.floorY);
     }).catch(err => console.error("Failed to load building GLB", err));
@@ -608,6 +609,16 @@ export class AtelierEngine {
         if (c instanceof THREE.Mesh && c.userData.brand) (c.material as THREE.MeshStandardMaterial).color.set(color);
       });
     });
+  }
+
+  /** Toggle room banner sprites (Labels button). Returns the new state. */
+  public setRoomLabelsVisible(visible: boolean): boolean {
+    if (this.roomLabelsGroup) this.roomLabelsGroup.visible = visible;
+    return visible;
+  }
+
+  public getRoomLabelsVisible(): boolean {
+    return this.roomLabelsGroup?.visible ?? true;
   }
 
   public setSelectedItemType(type: string | null) {
