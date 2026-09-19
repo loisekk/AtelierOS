@@ -28,4 +28,7 @@ export interface AddOptions {
 
 export type RoomBuilder = (add: AddFn, r: RoomRect, preset: LayoutPreset) => void;
 
-export type LayoutPreset = 'standard' | 'dense' | 'sparse';
+/** v4.0 — 'default' = the CEO's hand-placed office, baked verbatim into
+ *  userDefaultLayout.ts and shipped as the boot layout. The composed presets
+ *  (standard/dense/sparse) remain available via setPreset(). */
+export type LayoutPreset = 'default' | 'standard' | 'dense' | 'sparse';
