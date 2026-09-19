@@ -21,6 +21,7 @@ export interface PlacedItemMeta {
   role?: string;
   status?: AgentStatus;
   config?: AgentConfig;
+  ws?: boolean; // screen-linked workstation desk (registry mirrors this via deskItemId)
 }
 
 export interface CatalogItem {
