@@ -9,7 +9,9 @@ export const TopBar: React.FC<{
   openDispatch: () => void;
   isListening: boolean;
   toggleListening: () => void;
-}> = ({ view, setView, brandColor, setBrandColor, toggleFire, fireActive, openExport, openHelp, openSettings, openDispatch, isListening, toggleListening }) => {
+  labelsVisible: boolean;
+  toggleLabels: () => void;
+}> = ({ view, setView, brandColor, setBrandColor, toggleFire, fireActive, openExport, openHelp, openSettings, openDispatch, isListening, toggleListening, labelsVisible, toggleLabels }) => {
   return (
     <header className="panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 18px', height: '60px', borderBottom: '1px solid var(--line)', zIndex: 50, position: 'relative', background: 'var(--surface)' }}>
       <div className="flex items-center gap-5">
@@ -58,6 +60,10 @@ export const TopBar: React.FC<{
         </div>
 
         <div className="h-6 w-px" style={{ background: 'var(--line)' }}></div>
+        <button className={`btn ${labelsVisible ? '' : 'active'}`} onClick={toggleLabels} title="Show / hide room banners">
+          <i className={`fa-solid ${labelsVisible ? 'fa-tags' : 'fa-eye-slash'} text-[11px]`}></i>
+          <span>Labels</span>
+        </button>
         <button className={`btn ${fireActive ? 'active' : ''}`} onClick={toggleFire}><i className="fa-solid fa-route text-[11px]"></i><span>Fire</span></button>
         <button className="btn btn-primary" onClick={openExport}><i className="fa-solid fa-file-arrow-down text-[11px]"></i><span>Export</span></button>
         <button className="btn btn-icon" onClick={openHelp}><i className="fa-solid fa-keyboard text-[11px]"></i></button>
