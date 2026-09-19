@@ -10,6 +10,7 @@ import { LeftPanel } from '../features/workspace/components/LeftPanel';
 import { RightPanel } from '../features/workspace/components/RightPanel';
 import { AgentModal } from '../features/workspace/components/AgentModal';
 import { DispatchModal } from '../features/workspace/components/DispatchModal';
+import { RotationHud } from '../features/workspace/components/RotationHud';
 import { BOUNDS } from '../features/canvas/architecture/SpatialConfig';
 import type { AgentStatus, AgentConfig, Task } from '../features/ai-agents/types';
 
@@ -20,7 +21,7 @@ const BRAND_SWATCHES = ['#C75D3F', '#1F3A5F', '#6B8E4E', '#D49B3B', '#2A2826'];
 const HELP_SHORTCUTS = [
   { keys: 'Click item + floor', desc: 'Place furniture/employee' },
   { keys: 'Drag item', desc: 'Move furniture/employee' },
-  { keys: 'R / Scroll', desc: 'Rotate item (in Customize Mode)' },
+  { keys: 'Q/E · R/Shift+R · Scroll', desc: 'Rotate ghost or selected item (Customize Mode)' },
   { keys: 'Delete / Backspace', desc: 'Remove selected item' },
   { keys: 'Ctrl+Z', desc: 'Undo last action' },
   { keys: 'Esc', desc: 'Cancel / close panels' },
@@ -33,7 +34,7 @@ interface DagStep {
 
 function App() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const { engineRef, placedItems, selectedId } = useAtelier(containerRef);
+  const { engineRef, placedItems, selectedId, ghostDegrees } = useAtelier(containerRef);
   const toastTimer = useRef<number | null>(null);
   const dagStepsRef = useRef<DagStep[]>([]);
 
@@ -391,6 +392,15 @@ function App() {
               )}
             </div>
           )}
+
+          <RotationHud
+            customizing={isCustomizing}
+            selectedType={selectedType}
+            selectedItem={selectedItem}
+            ghostDegrees={ghostDegrees}
+            engineRef={engineRef}
+            onUndo={handleUndo}
+          />
         </main>
 
         <RightPanel 
