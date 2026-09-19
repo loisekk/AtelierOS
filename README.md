@@ -93,25 +93,6 @@ uvicorn main:app --reload --port 8000
 
 ---
 
-## 🛠️ Developer Tools & Calibration
-
-Atelier includes powerful in-browser debugging tools for mapping custom 3D environments. Expose the engine to the console by adding `window.atelierEngine = engineRef.current;` in `App.tsx`.
-
-### 📍 Spatial Calibration Tool
-If you swap the `agent-build-v1.glb` model for a new office layout, the hardcoded waypoints will break. Use the calibration tool to remap them:
-1. Open the browser console (`F12`).
-2. Run: `window.atelierEngine.startCalibration()`
-3. Click the floor of each prompted room in the 3D viewport.
-4. The tool will emit a perfectly formatted `WAYPOINTS` block. Paste this directly into `src/features/canvas/architecture/SpatialConfig.ts`.
-
-### 🗺️ Room Zone Debugging
-To visualize the invisible bounding boxes used for room-specific furniture placement:
-```javascript
-window.atelierEngine.debugRooms()
-```
-
----
-
 ## 🗺️ Roadmap
 
 ### ✅ Completed (Phases 0 - 12)
