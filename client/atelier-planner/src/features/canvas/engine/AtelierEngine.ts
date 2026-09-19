@@ -6,7 +6,8 @@ import { createAgentAvatar } from '../../furniture/factories/avatars';
 import type { PlacedItemMeta, AgentStatus, AgentConfig } from '../../ai-agents/types';
 import { addRoomLabels } from '../architecture/roomLabels';
 import { loadBuildingGLB } from '../architecture/BuildingLoader';
-import { BOUNDS, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, V, WORLD } from '../architecture/SpatialConfig';
+import { BOUNDS, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, ROOM_ZONES, V, WORLD } from '../architecture/SpatialConfig';
+import { RoomBoards } from './RoomBoards';
 import { WorkstationRegistry } from '../architecture/WorkstationRegistry';
 import { debugDrawZones } from '../architecture/RoomScanner';
 import { getAutoLayout, getLayoutStats, DEFAULT_OFFICE_LAYOUT_VERSION } from '../architecture/RoomFurnisher';
@@ -82,6 +83,7 @@ export class AtelierEngine {
 
   private screenManager: ScreenManager;
   private agentController: AgentController;
+  private roomBoards: RoomBoards | null = null;
   private workstationRegistry: WorkstationRegistry | null = null;
 
   /** Active canonical layout preset (v3.2 layout system). */
@@ -197,6 +199,7 @@ export class AtelierEngine {
     this.screenManager = new ScreenManager();
     this.screenManager.initHUD(this.scene);
     this.agentController = new AgentController(this.scene, this.screenManager, this.placedItems, this.meshes, this.avatars);
+    this.roomBoards = new RoomBoards(this.screenManager);
 
     this.setupSelectionRing();
     this.setupEventListeners();
@@ -263,6 +266,7 @@ export class AtelierEngine {
     this.history = [];
     const wsCount = layout.filter(e => e.ws).length;
     console.log(`🪑 Auto-furnished ${layout.length} items · ${wsCount} screen-linked desks (canonical v${DEFAULT_OFFICE_LAYOUT_VERSION}, preset '${preset}').`);
+    this.roomBoards?.redraw(this.placedItems, this.meshes); // initial "boards online" state
   }
 
   // ── RESET OFFICE: restore the canonical default layout ──
@@ -507,7 +511,15 @@ export class AtelierEngine {
   }
 
   private initBrain(anchor: THREE.Vector3 | null) {
-    const src = anchor ?? BRAIN_FALLBACK;
+    // v4.1 — BRAIN AS FURNITURE: this GLB is a single merged tripo_node with no
+    // semantic mesh names, so detectBrainAnchor() can never match (dead code,
+    // kept harmlessly for future multi-mesh GLBs). Deterministic zone-center
+    // placement is the only reliable anchor. The BRAIN_DAIS_Y positioning line
+    // below is intentionally untouched — the brain stands ON the dais.
+    const zone = ROOM_ZONES.find(z => z.id === 'brain_chamber');
+    const src = zone
+      ? new THREE.Vector3((zone.minX + zone.maxX) / 2, 0, (zone.minZ + zone.maxZ) / 2)
+      : (anchor ?? BRAIN_FALLBACK);
     const g = this.brainGroup = new THREE.Group();
     g.position.set(src.x, WORLD.floorY + BRAIN_DAIS_Y, src.z);
 
@@ -562,6 +574,9 @@ export class AtelierEngine {
   public updateDAG(steps: DagStep[]) { this.screenManager.updateDAG(this.scene, steps); }
   public updateAgentLog(agentId: string, log: string) {
     const mesh = this.meshes.get(agentId); if (mesh) this.screenManager.updateAgentLog(mesh, log);
+    const item = this.placedItems.find(i => i.id === agentId);
+    if (item) this.roomBoards?.routeLog(item.position, log);
+    this.roomBoards?.redraw(this.placedItems, this.meshes);
   }
   public startMeeting(agentIds: string[]) { this.agentController.startMeeting(agentIds); }
   public walkAgentTo(agentId: string, dest: string) { this.agentController.walkAgentTo(agentId, dest); }
@@ -569,6 +584,7 @@ export class AtelierEngine {
   public updateAgentStatus(id: string, status: AgentStatus) {
     this.agentController.updateAgentStatus(id, status, this.callbacks);
     if (this.selectedId === id) this.setSelected(id);
+    this.roomBoards?.redraw(this.placedItems, this.meshes);
   }
 
   public setCustomizing(mode: boolean) {
@@ -824,7 +840,7 @@ export class AtelierEngine {
 
     mesh.traverse(c => {
       if (c.userData.isAvatar) this.avatars.set(id, c as THREE.Group);
-      if (c instanceof THREE.Mesh && c.userData.isScreen && (c.userData.screenType === 'terminal' || c.userData.screenType === 'status')) {
+      if (c instanceof THREE.Mesh && c.userData.isScreen && (c.userData.screenType === 'terminal' || c.userData.screenType === 'status' || c.userData.screenType === 'room_board')) {
         if (!c.userData.screenData) {
           const screenData = this.screenManager.createScreenTexture();
           (c.material as THREE.MeshStandardMaterial).map = screenData.texture;
@@ -915,6 +931,7 @@ export class AtelierEngine {
     this.meshes.forEach(m => { this.disposeObject(m); this.scene.remove(m); });
     this.meshes.clear(); this.avatars.clear();
     this.placedItems = []; this.history = [];
+    this.roomBoards?.clear();
     this.setSelected(null); this.callbacks.onStatsUpdate(this.placedItems);
   }
 
