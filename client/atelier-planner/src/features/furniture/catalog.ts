@@ -26,7 +26,9 @@ function mkChair(): THREE.Group {
 function mkMonitor(x: number): THREE.Group {
   const g = new THREE.Group();
   const stand = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.2, 8), metalMat); stand.position.set(x, 0.72, -0.2); g.add(stand);
-  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.02), screenGlowMat); screen.position.set(x, 0.99, -0.2); g.add(screen);
+  const screen = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.35, 0.02), screenGlowMat.clone()); screen.position.set(x, 0.99, -0.2);
+  screen.userData.isScreen = true;
+  screen.userData.screenType = 'terminal'; g.add(screen);
   const bezel = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.37, 0.01), darkMat); bezel.position.set(x, 0.99, -0.21); g.add(bezel);
   return g;
 }
@@ -125,7 +127,9 @@ export const ITEM_CATALOG: Catalog = {
     factory: () => {
       const g = new THREE.Group();
       const frame = new THREE.Mesh(new THREE.BoxGeometry(4.2, 2.4, 0.08), darkMat); frame.position.y = 1.7; frame.castShadow = true; g.add(frame);
-      const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.2), screenGlowMat); scr.position.set(0, 1.7, 0.05); g.add(scr);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.2), screenGlowMat.clone()); scr.position.set(0, 1.7, 0.05);
+      scr.userData.isScreen = true;
+      scr.userData.screenType = 'room_board'; g.add(scr);
       return g;
     }
   },
