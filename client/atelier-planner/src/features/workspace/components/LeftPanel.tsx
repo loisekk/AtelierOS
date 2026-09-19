@@ -107,7 +107,8 @@ export const LeftPanel: FC<LeftPanelProps> = ({
           <h3 className="panel-section-title">Furniture & Fixtures</h3>
           <div className="text-[10px] font-mono mb-3 px-1" style={{ color: 'var(--charcoal-3)' }}>
             Click item → Click floor to place<br/>
-            Scroll/R to rotate • Esc to cancel
+            Q/E ±15° · R/Shift+R ±45° · Scroll<br/>
+            Click a placed item → rotate · Del removes · Ctrl+Z undoes
           </div>
           
           <div className="space-y-1.5 mb-5 flex-1 overflow-y-auto scroll-thin pr-1">
