@@ -82,19 +82,6 @@ export const ROOM_ZONES: RoomZone[] = [
   { id: 'reception',      label: 'Reception',          minX: 11,    maxX: 22.5, minZ: -7.5, maxZ: 7.5 },
 ];
 
-export const ROOM_LABELS: { text: string; sub: string; accent: string; pos: [number, number, number] }[] = [
-  { text: 'CEO BRAIN CORE',     sub: 'Command Intelligence',  accent: '#9B5FD4', pos: [ -11.2, 4.6, 0.4 ] },
-  { text: 'HOME WORKSPACE',     sub: 'CEO Private Office',    accent: '#C77B3F', pos: [ -16.0, 4.6, 12.0 ] },
-  { text: 'WORKSPACE SHOWCASE', sub: 'Active Projects',       accent: '#49D8EC', pos: [ -16.0, 4.6, -12.0 ] },
-  { text: 'COMMAND HUB',        sub: 'Dispatch & Monitor',    accent: '#49D8EC', pos: [ -4.5, 4.2,  0.0 ] },
-  { text: 'AGENT SPACE',        sub: 'AI Employees',          accent: '#4E9B67', pos: [ -4.5, 4.2, 12.0 ] },
-  { text: 'OFFICE FLOOR',       sub: 'Co-Workers & Teams',    accent: '#6B8E4E', pos: [ -4.5, 4.2, -12.0 ] },
-  { text: 'KNOWLEDGE HUB',      sub: 'Company Memory',        accent: '#56749B', pos: [  6.0, 4.2, 12.0 ] },
-  { text: 'MEETING ROOM',       sub: 'Team Strategy',         accent: '#D09A46', pos: [  6.0, 4.2,  0.0 ] },
-  { text: 'AI CLUB LOUNGE',     sub: 'Break & Social',        accent: '#9B5FD4', pos: [  6.0, 4.2, -12.0 ] },
-  { text: 'RECEPTION',          sub: 'Welcome to Atelier',    accent: '#B96D3D', pos: [ 17.0, 3.6,  0.0 ] },
-];
-
 export const CAMERA_RIGS = {
   office:    { pos: [ 26, 22, 26 ] as const,  lookAt: [ 0, 0, 0 ] as const,      fov: 40 },
   ceo:       { pos: [ 2.8, 5.5, 0.4 ] as const,  lookAt: [ -11.2, 2.6, 0.4 ] as const, fov: 35 },
