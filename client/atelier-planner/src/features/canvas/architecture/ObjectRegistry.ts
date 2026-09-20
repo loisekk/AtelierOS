@@ -35,7 +35,21 @@ export interface RoomStats {
 
 export function inferRoom(x: number, z: number): RoomId | 'exterior' {
   const zone = ROOM_ZONES.find(r => x >= r.minX && x <= r.maxX && z >= r.minZ && z <= r.maxZ);
-  return zone ? zone.id : 'exterior';
+  if (zone) return zone.id;
+  // v4.1 — nearest-zone fallback. The GLB floor extends past the zone rects
+  // (measured footprint x −21.9…22.5, z −21.1…20.3): e.g. the NE library and
+  // SE lounge clusters sit on REAL floor just outside their room rects, and
+  // the old strict rect test falsely reported them OUTSIDE building (41 false
+  // errors). Attribute to the nearest zone within 3m of its rect edge.
+  let best: RoomId | null = null;
+  let bestD = Infinity;
+  for (const r of ROOM_ZONES) {
+    const nx = Math.max(r.minX, Math.min(r.maxX, x));
+    const nz = Math.max(r.minZ, Math.min(r.maxZ, z));
+    const d = Math.hypot(x - nx, z - nz);
+    if (d < bestD) { bestD = d; best = r.id; }
+  }
+  return best && bestD <= 3 ? best : 'exterior';
 }
 
 export function classify(name: string, size: THREE.Vector3): { category: ObjectCategory; structural: boolean } {
