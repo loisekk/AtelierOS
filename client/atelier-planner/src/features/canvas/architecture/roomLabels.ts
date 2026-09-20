@@ -37,20 +37,24 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
   canvas.height = 160;
   const ctx = canvas.getContext('2d')!;
 
-  // Transparent dark-glass pill (banner style of the reference render)
+  // v4.2 — image-3 banner style: compact dark pill, title, thin divider, sub
   ctx.clearRect(0, 0, 512, 160);
-  ctx.fillStyle = 'rgba(18, 13, 9, 0.55)';
-  ctx.beginPath(); ctx.roundRect(6, 6, 500, 148, 28); ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)'; ctx.lineWidth = 3;
-  ctx.beginPath(); ctx.roundRect(6, 6, 500, 148, 28); ctx.stroke();
+  ctx.fillStyle = 'rgba(20, 16, 12, 0.82)';
+  ctx.beginPath(); ctx.roundRect(8, 14, 496, 132, 18); ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.16)'; ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.roundRect(8, 14, 496, 132, 18); ctx.stroke();
 
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#FFFFFF';
-  ctx.font = 'bold 40px Archivo, sans-serif';
-  ctx.fillText(text, 256, 68);
+  ctx.fillStyle = '#F4EDE3';
+  ctx.font = 'bold 34px Archivo, sans-serif';
+  ctx.fillText(text, 256, 64);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.22)'; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(196, 84); ctx.lineTo(316, 84); ctx.stroke();
+
   ctx.fillStyle = accent;
-  ctx.font = '26px Manrope, sans-serif';
-  ctx.fillText(subtext, 256, 112);
+  ctx.font = '21px Manrope, sans-serif';
+  ctx.fillText(subtext, 256, 120);
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
