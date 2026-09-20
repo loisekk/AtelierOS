@@ -29,7 +29,6 @@ export function roomBannerFor(zoneId: string): { text: string; sub: string; acce
 
 const BANNER_HOVER = 4.2;   // hover height above the dollhouse walls (world units over floorY)
 const BANNER_W = 5.2;       // sprite world width (height keeps the canvas aspect)
-const BANNER_PUSH_CAP = 13; // max parallax compensation (near-horizontal camera views)
 
 // v4.2.6 — close-orbit fade. The building is an open-top diorama with
 // depthTest ON, so from any raised angle the sight line to every banner
@@ -78,37 +77,29 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
 }
 
 /**
- * v4.2.5 — MEASURED-CENTROID ground targets + v4.2.4 parallax compensation.
- * A hovering sprite is a fixed world point, but the oblique dollhouse camera
- * (elevation ≈ 28–40°) shifts a point at hover height ≈8 ground units
- * "up-screen" toward the rotunda — one full room row. That is exactly what
- * made the v4.2.3 static anchors break: top-row banners floated over the
- * roofline and every other banner sat over the room ABOVE its own. A static
- * anchor can never satisfy both the dollhouse view and the 2D top view
- * (ortho has zero parallax), so placement is target + camera-aware:
- *   · GROUND TARGET — the point the banner must visually sit over. v4.2.4
- *     derived targets from ROOM_ZONES rects (rear −X wall + 1.75 inset,
- *     z-mid) — but zone rects are NOT furniture: reception rect-target
- *     (12.75, 0) vs furniture centroid (18.5, 0) = 5.75 m of drift,
- *     home_workspace 6.38 m, showcase 5.86 m. v4.2.5 targets are the
- *     validateLayout furniture centroids (the same dump that anchored the
- *     brain fix). ROOM_ANCHORS is the SINGLE SOURCE OF TRUTH for banner
- *     placement — never derive banner positions from rects again.
- *   · updateBannerPlacement() casts the camera ray through that ground point
- *     onto the hover plane, so the sprite projects EXACTLY onto the target's
- *     screen point at ANY camera angle — the banner reads as centered over
- *     its room in every view (image-3 rule).
- *   · brain_chamber is FIXED: pinned to the rotunda's west rim (−16.0, −0.3),
- *     NOT the zone rect center (−16.25, 0) — that point raycasts at 14.14 =
- *     the rotunda WALL TOP (see BRAIN_ANCHOR doc in SpatialConfig). The rim
- *     target is 0.39 m from the centroid (inside tolerance), keeps the
- *     banner north of the brain, and the 14-unit ring would swallow any
- *     compensated move — so the rim itself is the target.
+ * v4.2.7 — STATIC centroid banners (user decision) · v4.2.6 close-orbit fade.
+ *   · GROUND TARGET — the point the banner sits over: the validateLayout
+ *     furniture centroid (ROOM_ANCHORS = SINGLE SOURCE OF TRUTH). The v4.2.4
+ *     rect-derived targets drifted up to 6.4 m (reception 5.75, home 6.38,
+ *     showcase 5.86); v4.2.5 fixed the targets, this fixes the MOTION.
+ *   · BANNERS NEVER MOVE WITH THE CAMERA. v4.2.4's per-frame parallax
+ *     compensation slid each sprite toward the camera (capped at 13 units)
+ *     so all ten banners visibly swooped toward the viewer while orbiting —
+ *     rejected as ugly. Static placement is the reference look: every banner
+ *     pinned over its room, exactly like the 2D top-view screenshot.
+ *     Accepted trade: at oblique dollhouse angles a hover sprite reads a
+ *     FIXED amount "up-screen" from its target — constant for a given
+ *     camera pose, zero motion.
+ *   · brain_chamber override kept at the measured rotunda west rim
+ *     (−16.0, −0.3, hover 4.8), NOT the zone rect center (−16.25, 0) —
+ *     that point raycasts at 14.14 = the rotunda WALL TOP (see
+ *     BRAIN_ANCHOR doc in SpatialConfig); 0.39 m from the centroid, banner
+ *     stays north of the brain, clear of the 14-unit ring.
  */
-export const ROOM_ANCHORS: Record<RoomId, { x: number; z: number; hover?: number; fixed?: boolean }> = {
+export const ROOM_ANCHORS: Record<RoomId, { x: number; z: number; hover?: number }> = {
   // validateLayout furniture centroids (v4 dump) — banner ground targets
   home_workspace: { x: -14.4, z: 12.9 },
-  brain_chamber:  { x: -16.0, z: -0.3, hover: 4.8, fixed: true }, // measured rotunda west rim — see note above
+  brain_chamber:  { x: -16.0, z: -0.3, hover: 4.8 }, // measured rotunda west rim — see note above
   showcase:       { x: -14.9, z: -11.9 },
   agent_space:    { x: -4.7,  z: 12.3 },
   command_hub:    { x: -0.4,  z: -1.9 },
@@ -119,23 +110,24 @@ export const ROOM_ANCHORS: Record<RoomId, { x: number; z: number; hover?: number
   reception:      { x: 18.5,  z: 0 },
 };
 
-interface BannerGround { x: number; z: number; hover: number; fixed: boolean }
+interface BannerGround { x: number; z: number; hover: number }
 
 const ZONES_BY_ID = new Map(ROOM_ZONES.map(zone => [zone.id, zone]));
 
 function bannerGround(id: RoomId): BannerGround {
   const a = ROOM_ANCHORS[id];
-  return { x: a.x, z: a.z, hover: a.hover ?? BANNER_HOVER, fixed: !!a.fixed };
+  return { x: a.x, z: a.z, hover: a.hover ?? BANNER_HOVER };
 }
 
 // Scratch vector — no per-frame allocation in the render loop.
 const _camPos = new THREE.Vector3();
 
 /**
- * Per-frame banner placement: compensates the active camera's parallax so
- * every banner projects exactly onto its room's ground target. Ortho (2D
- * view) has zero parallax — sprites sit straight above the target.
- * v4.2.6 — also drives the close-orbit opacity fade (see constants above).
+ * Per-frame banner maintenance: static placement + close-orbit opacity fade.
+ * v4.2.7 — banners NEVER move with the camera. The v4.2.4 parallax
+ * compensation slid sprites toward the camera every frame (up to 13 units),
+ * which made all ten banners swoop toward the viewer while orbiting — the
+ * user rejected that. Static ground-target placement is the reference look.
  * Call after controls.update() and before render.
  */
 export function updateBannerPlacement(group: THREE.Group, camera: THREE.Camera, floorY: number): void {
@@ -145,43 +137,18 @@ export function updateBannerPlacement(group: THREE.Group, camera: THREE.Camera, 
     const zone = zoneId ? ZONES_BY_ID.get(zoneId) : undefined;
     if (!zone) return;
     const g = bannerGround(zone.id);
-    const hoverY = floorY + g.hover;
+    // STATIC — the same world position every frame, pinned over the room's
+    // furniture centroid. Opacity is the only per-frame property.
+    sprite.position.set(g.x, floorY + g.hover, g.z);
+    const mat = sprite.material as THREE.SpriteMaterial;
     if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
-      // 2D top view — zero parallax, all banners fully visible.
-      sprite.position.set(g.x, hoverY, g.z);
-      (sprite.material as THREE.SpriteMaterial).opacity = 1;
+      mat.opacity = 1; // 2D top view — all banners fully visible
       return;
     }
     _camPos.copy(camera.position);
-    if (g.fixed) {
-      // Fixed target: no compensation (the 14-unit rotunda ring would
-      // swallow a compensated move — see ROOM_ANCHORS note).
-      sprite.position.set(g.x, hoverY, g.z);
-    } else {
-      // Perspective: intersect the camera→ground-target ray with the hover
-      // plane. The sprite center then projects exactly onto the target's
-      // screen point. t = (hoverY − camY) / (floorY − camY).
-      const denom = floorY - _camPos.y; // < 0 looking down · > 0 looking up
-      let t = 1;
-      if (Math.abs(denom) > 1e-3) {
-        t = (hoverY - _camPos.y) / denom;
-        // Cap the compensation: near-horizontal views would fling sprites far
-        // east (and shrink them); clamp instead of chasing the target exactly.
-        const horiz = Math.hypot(g.x - _camPos.x, g.z - _camPos.z);
-        if (horiz > 1e-3) t = Math.min(t, (horiz + BANNER_PUSH_CAP) / horiz);
-        t = Math.max(t, 0.05);
-      }
-      sprite.position.set(
-        _camPos.x + (g.x - _camPos.x) * t,
-        hoverY,
-        _camPos.z + (g.z - _camPos.z) * t,
-      );
-    }
-    // Close-orbit fade: zoomed-out dollhouse keeps every banner full; orbiting
-    // close dims banners beyond BANNER_FADE_NEAR_D so only the inspected
-    // room's banner reads on top. Each sprite owns its material → per-sprite
-    // opacity is safe.
-    const mat = sprite.material as THREE.SpriteMaterial;
+    // Close-orbit fade (opacity ONLY — never position): zoomed-out dollhouse
+    // keeps every banner full; orbiting close dims banners beyond
+    // BANNER_FADE_NEAR_D so only the inspected room's banner reads on top.
     const camNear = THREE.MathUtils.smoothstep(_camPos.length(), BANNER_FADE_CAM_NEAR, BANNER_FADE_CAM_FAR);
     if (camNear >= 1) { mat.opacity = 1; return; }
     const d = _camPos.distanceTo(sprite.position);
@@ -191,10 +158,11 @@ export function updateBannerPlacement(group: THREE.Group, camera: THREE.Camera, 
 }
 
 /**
- * Adds one transparent banner sprite per room. Initial placement uses the
- * ground targets; the engine re-runs updateBannerPlacement() every frame so
- * banners stay pinned to their room's top edge as the camera moves.
- * Returns the group so the engine can toggle visibility (Labels button).
+ * Adds one transparent banner sprite per room, statically placed over its
+ * ground target. The engine re-runs updateBannerPlacement() every frame —
+ * placement is static; that call only maintains the close-orbit opacity
+ * fade. Returns the group so the engine can toggle visibility (Labels
+ * button).
  */
 export function addRoomLabels(scene: THREE.Scene, baseY: number): THREE.Group {
   const group = new THREE.Group();
