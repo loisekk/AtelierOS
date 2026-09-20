@@ -55,13 +55,24 @@ function mkPlant(scale = 1): THREE.Group {
 
 export const ITEM_CATALOG: Catalog = {
   // --- AI EMPLOYEES ---
+  // v4.2 — AGENT BODY ONLY: hiring spawns the seated humanoid itself, never a
+  // bundled workstation (desks already exist from the layout — no duplicates).
+  // Spawn point = wherever the CEO points. userData.isAgent/agentRole let the
+  // engine's click-picking treat agents specially (always selectable, never
+  // draggable furniture). Avatar is rotated π so its face/eyes look at the
+  // desk-side (−z of its parent group = where monitors sit at −0.2).
   frontend_desk: {
-    name: 'Frontend Engineer', icon: 'fa-code', price: 0, seats: 0, dim: [2.0, 1.2], role: 'Frontend',
+    name: 'Frontend Engineer', icon: 'fa-code', price: 0, seats: 0, dim: [0.5, 0.5], role: 'Frontend',
     factory: (bc) => {
       const g = new THREE.Group();
-      g.add(mkDeskBody()); g.add(mkMonitor(-0.35)); g.add(mkMonitor(0.35));
-      const ch = mkChair(); ch.position.z = 0.45; g.add(ch);
-      const avatar = createAgentAvatar(bc); avatar.position.set(0, 0.49, 0.4); g.add(avatar);
+      // The agent's own chair (body only — desk/monitors come from the layout)
+      const ch = mkChair(); g.add(ch);
+      const avatar = createAgentAvatar(bc);
+      avatar.position.set(0, 0.06, 0);  // hips settle ON the seat (seat top ≈ 0.49)
+      avatar.rotation.y = Math.PI;      // face is at +z → π turns the eyes to the monitors (−z)
+      avatar.userData.isAgent = true;
+      avatar.userData.agentRole = 'Frontend';
+      g.add(avatar);
       return g;
     }
   },
@@ -130,6 +141,30 @@ export const ITEM_CATALOG: Catalog = {
       const scr = new THREE.Mesh(new THREE.PlaneGeometry(4.0, 2.2), screenGlowMat.clone()); scr.position.set(0, 1.7, 0.05);
       scr.userData.isScreen = true;
       scr.userData.screenType = 'room_board'; g.add(scr);
+      return g;
+    }
+  },
+  // --- DISPLAY (v4.2) ---
+  // The old big DAG screen was a scene FIXTURE welded to the Command Hub north
+  // wall (ScreenManager.createDAGScreen): unmovable, unselectable, unknown to
+  // the catalog. Now a real Display item — placeable, movable, rotatable,
+  // deletable — that ADOPTS the shared DAG canvas (engine wires it after
+  // placement), so every projector streams the live task decomposition.
+  projector_screen: {
+    name: 'Projector Screen', icon: 'fa-projection-screen', price: 2400, seats: 0, dim: [6.4, 1.4],
+    factory: () => {
+      const g = new THREE.Group();
+      const base = new THREE.Mesh(new THREE.BoxGeometry(5.6, 0.18, 1.4), woodDarkMat); base.position.y = 0.09; base.castShadow = true; g.add(base);
+      [-2.55, 2.55].forEach(x => {
+        const leg = new THREE.Mesh(new THREE.BoxGeometry(0.22, 2.5, 0.22), metalMat); leg.position.set(x, 1.25, 0); leg.castShadow = true; g.add(leg);
+      });
+      const beam = new THREE.Mesh(new THREE.BoxGeometry(6.4, 0.16, 0.24), metalMat); beam.position.set(0, 2.42, 0); beam.castShadow = true; g.add(beam);
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(6.4, 3.4, 0.12), new THREE.MeshStandardMaterial({ color: 0x292827, roughness: 0.4, metalness: 0.6 })); frame.position.set(0, 3.7, 0); frame.castShadow = true; g.add(frame);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(6, 3), new THREE.MeshBasicMaterial({ color: 0x0A0A12, transparent: true, side: THREE.DoubleSide }));
+      scr.position.set(0, 3.7, 0.075);
+      scr.userData.isScreen = true;
+      scr.userData.screenType = 'dag';   // engine adopts the shared DAG canvas
+      g.add(scr);
       return g;
     }
   },
