@@ -197,6 +197,26 @@
         from zone-rect centers (the class v4.2.5 removed) and would have
         clobbered the measured brain rim override.
       · Gates: bun run typecheck 0 · bun run lint 0.
+- [x] v4.2.7 STATIC BANNERS — parallax compensation REVERTED (user decision;
+      gates 0/0):
+      · User feedback while orbiting: "all of this stuff is coming to my
+        face — really ugly." Root cause: v4.2.4's per-frame parallax
+        compensation slides every sprite toward the camera along the view
+        ray (capped at 13 units) — the banners literally swoop toward the
+        viewer on every orbit. REVERTED: updateBannerPlacement now sets a
+        STATIC position (ground target = ROOM_ANCHORS centroid) every
+        frame; opacity is the only per-frame property. Accepted trade: at
+        oblique dollhouse angles a hover sprite reads a fixed "up-screen"
+        offset — constant per camera pose, zero motion.
+      · BANNER_PUSH_CAP, fixed-flag and ray/plane intersection removed.
+        Brain override unchanged (−16.0, −0.3, hover 4.8 — rim target).
+      · v4.2.6 close-orbit fade KEPT (opacity-only, never position):
+        ortho 2D top + zoomed-out dollhouse = all full; close orbit = only
+        banners within 25 units of the camera stay bright.
+      · Reference: user screenshot of the 2D top view — banners centered
+        over each room, compact pills, full opacity = the v4.2.5 centroid
+        look with static placement.
+      · Gates: bun run typecheck 0 · bun run lint 0.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
