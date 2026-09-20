@@ -31,6 +31,22 @@ const BANNER_HOVER = 4.2;   // hover height above the dollhouse walls (world uni
 const BANNER_W = 5.2;       // sprite world width (height keeps the canvas aspect)
 const BANNER_PUSH_CAP = 13; // max parallax compensation (near-horizontal camera views)
 
+// v4.2.6 — close-orbit fade. The building is an open-top diorama with
+// depthTest ON, so from any raised angle the sight line to every banner
+// passes over the walls — all 10 read at once, and close orbiting stacks
+// them visually. Fade is camera-distance-driven, NOT per-depth flags:
+//   · camera ≥ BANNER_FADE_CAM_FAR from origin (zoomed-out dollhouse,
+//     incl. the default office rig ≈ 43) → every banner full opacity
+//   · ortho (2D top view) → always full
+//   · camera ≤ BANNER_FADE_CAM_NEAR (close inspection) → only banners
+//     within BANNER_FADE_NEAR_D of the camera stay full; the rest fade
+//     to zero over BANNER_FADE_SPAN, so the inspected room's banner
+//     reads on top instead of all ten superimposed.
+const BANNER_FADE_CAM_NEAR = 22; // camera distance below this → fading active
+const BANNER_FADE_CAM_FAR = 40;  // camera distance above this → all banners full
+const BANNER_FADE_NEAR_D = 25;   // label within this distance of camera stays full
+const BANNER_FADE_SPAN = 45;     // labels fade to zero over this span beyond it
+
 function createLabelTexture(text: string, subtext: string, accent: string): THREE.Texture {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
@@ -118,8 +134,9 @@ const _camPos = new THREE.Vector3();
 /**
  * Per-frame banner placement: compensates the active camera's parallax so
  * every banner projects exactly onto its room's ground target. Ortho (2D
- * view) has zero parallax — sprites sit straight above the target. Call
- * after controls.update() and before render.
+ * view) has zero parallax — sprites sit straight above the target.
+ * v4.2.6 — also drives the close-orbit opacity fade (see constants above).
+ * Call after controls.update() and before render.
  */
 export function updateBannerPlacement(group: THREE.Group, camera: THREE.Camera, floorY: number): void {
   group.children.forEach(child => {
@@ -129,29 +146,47 @@ export function updateBannerPlacement(group: THREE.Group, camera: THREE.Camera, 
     if (!zone) return;
     const g = bannerGround(zone.id);
     const hoverY = floorY + g.hover;
-    if (g.fixed || (camera as THREE.OrthographicCamera).isOrthographicCamera) {
+    if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+      // 2D top view — zero parallax, all banners fully visible.
       sprite.position.set(g.x, hoverY, g.z);
+      (sprite.material as THREE.SpriteMaterial).opacity = 1;
       return;
     }
     _camPos.copy(camera.position);
-    // Perspective: intersect the camera→ground-target ray with the hover
-    // plane. The sprite center then projects exactly onto the target's
-    // screen point. t = (hoverY − camY) / (floorY − camY).
-    const denom = floorY - _camPos.y; // < 0 looking down · > 0 looking up
-    let t = 1;
-    if (Math.abs(denom) > 1e-3) {
-      t = (hoverY - _camPos.y) / denom;
-      // Cap the compensation: near-horizontal views would fling sprites far
-      // east (and shrink them); clamp instead of chasing the target exactly.
-      const horiz = Math.hypot(g.x - _camPos.x, g.z - _camPos.z);
-      if (horiz > 1e-3) t = Math.min(t, (horiz + BANNER_PUSH_CAP) / horiz);
-      t = Math.max(t, 0.05);
+    if (g.fixed) {
+      // Fixed target: no compensation (the 14-unit rotunda ring would
+      // swallow a compensated move — see ROOM_ANCHORS note).
+      sprite.position.set(g.x, hoverY, g.z);
+    } else {
+      // Perspective: intersect the camera→ground-target ray with the hover
+      // plane. The sprite center then projects exactly onto the target's
+      // screen point. t = (hoverY − camY) / (floorY − camY).
+      const denom = floorY - _camPos.y; // < 0 looking down · > 0 looking up
+      let t = 1;
+      if (Math.abs(denom) > 1e-3) {
+        t = (hoverY - _camPos.y) / denom;
+        // Cap the compensation: near-horizontal views would fling sprites far
+        // east (and shrink them); clamp instead of chasing the target exactly.
+        const horiz = Math.hypot(g.x - _camPos.x, g.z - _camPos.z);
+        if (horiz > 1e-3) t = Math.min(t, (horiz + BANNER_PUSH_CAP) / horiz);
+        t = Math.max(t, 0.05);
+      }
+      sprite.position.set(
+        _camPos.x + (g.x - _camPos.x) * t,
+        hoverY,
+        _camPos.z + (g.z - _camPos.z) * t,
+      );
     }
-    sprite.position.set(
-      _camPos.x + (g.x - _camPos.x) * t,
-      hoverY,
-      _camPos.z + (g.z - _camPos.z) * t,
-    );
+    // Close-orbit fade: zoomed-out dollhouse keeps every banner full; orbiting
+    // close dims banners beyond BANNER_FADE_NEAR_D so only the inspected
+    // room's banner reads on top. Each sprite owns its material → per-sprite
+    // opacity is safe.
+    const mat = sprite.material as THREE.SpriteMaterial;
+    const camNear = THREE.MathUtils.smoothstep(_camPos.length(), BANNER_FADE_CAM_NEAR, BANNER_FADE_CAM_FAR);
+    if (camNear >= 1) { mat.opacity = 1; return; }
+    const d = _camPos.distanceTo(sprite.position);
+    const labelOpacity = THREE.MathUtils.clamp(1 - (d - BANNER_FADE_NEAR_D) / BANNER_FADE_SPAN, 0, 1);
+    mat.opacity = labelOpacity + camNear * (1 - labelOpacity);
   });
 }
 
