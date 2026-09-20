@@ -265,10 +265,9 @@ export class AtelierEngine {
     });
     this._autoFurnishing = false;
     this.history = [];
-    // v4.2 — ship the PROJECTOR SCREEN: the old wall-welded DAG fixture, now
-    // real Display furniture (movable/rotatable/deletable), standing on the
-    // Command Hub platform (raycast floor 11.426 → dy 0.735), facing the hub.
-    this.placeItem('projector_screen', new THREE.Vector3(-4.5, WORLD.floorY, -2.4), Math.PI, undefined, 0.735);
+    // v4.2.2 — projectors are LAYOUT ITEMS now: the baked default carries the
+    // CEO's hand-placed projector_screens (Showcase + Home Workspace); the old
+    // hardcoded Command Hub ship is gone (it would duplicate a third one).
     const wsCount = layout.filter(e => e.ws).length;
     console.log(`🪑 Auto-furnished ${layout.length} items · ${wsCount} screen-linked desks (canonical v${DEFAULT_OFFICE_LAYOUT_VERSION}, preset '${preset}').`);
     this.roomBoards?.redraw(this.placedItems, this.meshes); // initial "boards online" state
