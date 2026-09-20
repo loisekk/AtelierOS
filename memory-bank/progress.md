@@ -108,6 +108,25 @@
         accent sub);
       · live verify: agent at exact click point (6,12), projector streaming
         DAG canvas, validateLayout 184 OK · 0 err · 0 warn.
+- [x] v4.2.2 CEO-BAKE + BOARD/BANNER RE-ANCHOR (5 commits, gates 0/0):
+      · DEFAULT = CEO's LIVE arrangement — dumped placedItems (182 items,
+        12 ws desks, 2 hand-placed projector_screen: Showcase @dy 0.735,
+        Home Workspace @dy 0) → regenerated userDefaultLayout.ts v1.1 +
+        user-layout.json parity. NOTE: PS generation must escape
+        `` `$true/`$false `` or literals leak into the TS (fixed post-hoc).
+      · PROJECTORS ARE LAYOUT ITEMS — autoFurnish's hardcoded Command Hub
+        projector ship REMOVED (would duplicate a third one every reset).
+      · BOARDS: RoomBoards.zoneIdForScreen — a wall_screen displays the room
+        it FACES INTO (plane normal = +z rotated by rotY, probe 2.2m along
+        facing). Boundary boards at rect edges were all resolving to the same
+        neighbor room → identical content ("two rooms loading the same").
+        Live result: ai_club×2, knowledge×2, meeting, reception — all distinct.
+      · BANNERS: back to GEOMETRIC room centers (zone rect centers, brain
+        pinned to BRAIN_ANCHOR). Centroid anchoring drifted with every
+        customize pass (front banner sliding toward the lounge).
+      · Verified live: resetOffice → 182 items, projectors in place,
+        validateLayout 182 OK · 0 err · 0 warn; top-view screenshot — every
+        banner over its room.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
