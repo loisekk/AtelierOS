@@ -93,8 +93,8 @@ export class AgentController {
     const deskMesh = this.meshes.get(item.id);
     if (deskMesh) {
       deskMesh.attach(avatar);
-      avatar.position.set(0, 0.49, 0.4);
-      avatar.rotation.y = 0;
+      avatar.position.set(0, 0.06, 0);  // v4.2 seated pose: hips on the seat
+      avatar.rotation.y = Math.PI;      // eyes on the monitors (desk side)
     }
     this.agentPaths.delete(agentId);
     this.agentWalkTargets.delete(agentId);
