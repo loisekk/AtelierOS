@@ -152,6 +152,30 @@
         .verify/banners-v424-office.jpeg + banners-v424-top.jpeg — every
         banner pinned to its room's top edge, brain banner clear of the
         brain, no roofline floaters at any camera angle.
+- [x] v4.2.5 MEASURED-CENTROID BANNER TARGETS (gates 0/0):
+      · v4.2.4 fixed the parallax bug but still derived ground targets from
+        ROOM_ZONES rects (rear −X wall + 1.75 inset, z-mid) — the rect-center
+        failure class again. Static diff vs the validateLayout furniture
+        centroid dump: reception 5.75 m, home_workspace 6.38 m, showcase
+        5.86 m, command_hub 4.25 m, meeting_room 3.94 m, agent_space 3.55 m,
+        ai_club 3.37 m, knowledge_hub 2.96 m, office_floor 1.71 m — only
+        brain_chamber (0.39 m) in tolerance.
+      · roomLabels v4.2.5 — `export const ROOM_ANCHORS` = furniture centroid
+        table (home −14.4/12.9, showcase −14.9/−11.9, agent_space −4.7/12.3,
+        command_hub −0.4/−1.9, office_floor −6.6/−11.8, knowledge_hub 5.7/12.2,
+        meeting_room 6.2/1.9, ai_club 6.1/−12.2, reception 18.5/0); BANNER_INSET
+        rect math deleted; bannerGround(id) reads the table. v4.2.4 parallax
+        compensation + per-frame re-anchor untouched (orthogonal concerns).
+      · brain_chamber override KEPT at the measured rotunda west rim
+        (−16.0, −0.3, hover 4.8, fixed) — the centroid table's (−16.25, 0)
+        raycasts at 14.14 = rotunda wall top (SpatialConfig BRAIN_ANCHOR doc);
+        0.39 m from the centroid = inside tolerance, banner stays north of
+        the brain, clear of the 14-unit ring.
+      · SpatialConfig: dead v3-era ROOM_LABELS array (10 hand-tuned old
+        coordinates, zero references) deleted — drift bait removed.
+      · Gates: bun run typecheck 0 · bun run lint 0. Live verify when the
+        dev server is up: every banner should project over its room's
+        furniture centroid at any camera angle.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
