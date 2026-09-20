@@ -1,22 +1,21 @@
-/** AUTO-GENERATED from user-layout.json — the CEO's hand-placed default office.
- *  180 items, 13 ws desks, baked 2026-09-17. DO NOT hand-edit.
+﻿/** AUTO-GENERATED from the live engine dump — the CEO's customized default office.
+ *  182 items, 12 ws desks, 2 projector_screen (Showcase + Home Workspace), baked 2026-09-20. DO NOT hand-edit.
  */
 import type { LayoutEntry } from './layoutTypes';
 
-export const USER_DEFAULT_VERSION = '1.0';
+export const USER_DEFAULT_VERSION = '1.1';
 
 export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
-  { type: 'conference_table', x: -13.33, z: 12.839, r: 1.5708, ws: false, dy: 0 },
-  { type: 'workstation_set', x: -11.25, z: 10.096, r: -4.7124, ws: true, dy: 0 },
+  { type: 'conference_table', x: -11.027, z: 13.055, r: 1.5708, ws: false, dy: 0 },
   { type: 'bookshelf_large', x: -17.475, z: 15.65, r: 3.1416, ws: false, dy: 0 },
   { type: 'bookshelf_large', x: -16.275, z: 15.65, r: 3.1416, ws: false, dy: 0 },
   { type: 'lounge_sofa', x: -11.929, z: 7.633, r: 0, ws: false, dy: 0 },
-  { type: 'coffee_table', x: -15.313, z: 10.465, r: 0, ws: false, dy: 0 },
+  { type: 'coffee_table', x: -11.662, z: 9.386, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -14.53, z: 7.854, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -15.902, z: 4.844, r: 0, ws: false, dy: 0 },
   { type: 'wall_screen', x: 11.672, z: -11.773, r: 1.5708, ws: false, dy: 0 },
   { type: 'workstation_set', x: -0.054, z: 2.526, r: -4.7124, ws: true, dy: 0 },
-  { type: 'chair', x: -9.722, z: 3.026, r: 0.3927, ws: false, dy: 0.73 },   // v4.1 dais ring (measured BRAIN_ANCHOR, R 3.6, on-dais dy)
+  { type: 'chair', x: -9.722, z: 3.026, r: 0.3927, ws: false, dy: 0.73 },
   { type: 'chair', x: -7.774, z: 1.078, r: 1.1781, ws: false, dy: 0.73 },
   { type: 'chair', x: -7.774, z: -1.678, r: 1.9635, ws: false, dy: 0.73 },
   { type: 'chair', x: -9.722, z: -3.626, r: 2.7489, ws: false, dy: 0.73 },
@@ -29,16 +28,15 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'plant_large', x: -11.563, z: 5.25, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -11.563, z: -5.25, r: 0, ws: false, dy: 0 },
   { type: 'conference_table', x: -11.219, z: -12.37, r: 1.5708, ws: false, dy: 0 },
-  { type: 'pendant', x: -18.625, z: -12.25, r: 0, ws: false, dy: 0 },
   { type: 'conference_table', x: 13.955, z: -11.608, r: 1.5708, ws: false, dy: 0 },
-  { type: 'pendant', x: -14.25, z: -12.25, r: 0, ws: false, dy: 0 },
-  { type: 'wall_screen', x: -15.08, z: -12.593, r: 1.5708, ws: false, dy: 0 },
-  { type: 'bookshelf_large', x: -16.225, z: -8.85, r: 3.1416, ws: false, dy: 0 },
-  { type: 'bookshelf_large', x: -15.025, z: -8.85, r: 3.1416, ws: false, dy: 0 },
+  { type: 'pendant', x: -11.22, z: -11.303, r: 0, ws: false, dy: 0 },
+  { type: 'wall_screen', x: 1.648, z: -0.612, r: 1.5708, ws: false, dy: 0 },
+  { type: 'bookshelf_large', x: -15.478, z: -8.538, r: 4.7124, ws: false, dy: 0 },
+  { type: 'bookshelf_large', x: -13.717, z: -7.84, r: 3.1416, ws: false, dy: 0 },
   { type: 'plant_large', x: -8.647, z: -8.373, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: 12.268, z: -15.309, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -11.767, z: -8.318, r: 0, ws: false, dy: 0 },
-  { type: 'plant_large', x: -11.375, z: -15.565, r: 0, ws: false, dy: 0 },
+  { type: 'plant_large', x: -10.867, z: -16.5, r: 0, ws: false, dy: 0 },
   { type: 'round_table', x: -6.81, z: 14.162, r: 0, ws: false, dy: 0 },
   { type: 'chair', x: -6.81, z: 13.112, r: 3.1416, ws: false, dy: 0 },
   { type: 'chair', x: -6.81, z: 15.213, r: 0, ws: false, dy: 0 },
@@ -67,7 +65,7 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'workstation_set', x: -5.525, z: -14.752, r: -4.7124, ws: true, dy: 0 },
   { type: 'bookshelf_large', x: -6.665, z: -8.117, r: 3.1416, ws: false, dy: 0 },
   { type: 'bookshelf_large', x: -4.274, z: -8.028, r: 3.1416, ws: false, dy: 0 },
-  { type: 'plant_large', x: -8.79, z: -15.65, r: 0, ws: false, dy: 0 },
+  { type: 'plant_large', x: -8.185, z: -16.5, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -0.21, z: -15.65, r: 0, ws: false, dy: 0 },
   { type: 'wall_screen', x: 2.244, z: -12.523, r: 1.5708, ws: false, dy: 0 },
   { type: 'bookshelf_large', x: 3.775, z: 15.65, r: 3.1416, ws: false, dy: 0 },
@@ -144,16 +142,16 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'round_table', x: 2.586, z: -8.66, r: 0, ws: false, dy: 0 },
   { type: 'round_table', x: 2.678, z: -15.462, r: 0, ws: false, dy: 0 },
   { type: 'bookshelf_large', x: 18.591, z: -7.772, r: 0, ws: false, dy: 0 },
-  { type: 'bookshelf_large', x: 14.139, z: -7.749, r: 0, ws: false, dy: 0 },
+  { type: 'bookshelf_large', x: 14.341, z: -7.758, r: 0, ws: false, dy: 0 },
   { type: 'lounge_sofa', x: 18.388, z: -9.857, r: 3.1416, ws: false, dy: 0 },
   { type: 'lounge_sofa', x: 18.049, z: -12.872, r: 0, ws: false, dy: 0 },
-  { type: 'waiting_bench', x: 16.322, z: -7.641, r: 0, ws: false, dy: 0 },
+  { type: 'waiting_bench', x: 16.502, z: -7.69, r: 3.1416, ws: false, dy: 0 },
   { type: 'waiting_bench', x: 14.73, z: -6.542, r: 0, ws: false, dy: 0 },
   { type: 'waiting_bench', x: 5.966, z: -6.359, r: 0, ws: false, dy: 0 },
   { type: 'waiting_bench', x: 15.299, z: 5.688, r: 3.1416, ws: false, dy: 0 },
   { type: 'waiting_bench', x: 7.34, z: 5.79, r: 3.1416, ws: false, dy: 0 },
   { type: 'command_console', x: 4.048, z: -0.615, r: 3.1416, ws: false, dy: 0 },
-  { type: 'archive_server', x: 12.467, z: -8.002, r: 0, ws: false, dy: 0 },
+  { type: 'archive_server', x: 12.724, z: -7.709, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: 18.059, z: -5.438, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: 18.251, z: 4.757, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -3.904, z: 5.132, r: 0, ws: false, dy: 0 },
@@ -161,7 +159,7 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'plant_large', x: -2.981, z: -4.472, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -13.861, z: -6.395, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -15.518, z: -5.54, r: 0, ws: false, dy: 0 },
-  { type: 'plant_large', x: -14.029, z: -16.083, r: 0, ws: false, dy: 0 },
+  { type: 'plant_large', x: -5.577, z: -16.5, r: 0, ws: false, dy: 0 },
   { type: 'plant', x: 20.07, z: -8.031, r: 0, ws: false, dy: 0 },
   { type: 'plant', x: 20.041, z: -12.344, r: 0, ws: false, dy: 0 },
   { type: 'plant', x: 15.668, z: -14.896, r: 0, ws: false, dy: 0 },
@@ -180,7 +178,7 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'plant', x: 0.442, z: 15.185, r: 0, ws: false, dy: 0 },
   { type: 'plant', x: -2.389, z: 8.156, r: 0, ws: false, dy: 0 },
   { type: 'plant', x: -13.836, z: 15.961, r: 0, ws: false, dy: 0 },
-  { type: 'plant', x: -7.064, z: 15.967, r: 0, ws: false, dy: 0 },
+  { type: 'plant', x: -8.742, z: 15.929, r: 0, ws: false, dy: 0 },
   { type: 'coffee_table', x: 18.462, z: -11.339, r: 0, ws: false, dy: 0 },
   { type: 'pendant', x: 18.39, z: -11.261, r: 0, ws: false, dy: 0 },
   { type: 'lounge_chair', x: 3.691, z: -1.62, r: 4.7124, ws: false, dy: 0 },
@@ -188,5 +186,8 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'plant', x: 9.178, z: -5.214, r: 0, ws: false, dy: 0 },
   { type: 'plant', x: 4.79, z: -5.15, r: 0, ws: false, dy: 0 },
   { type: 'plant_large', x: -4.12, z: -6.043, r: 0, ws: false, dy: 0 },
+  { type: 'projector_screen', x: -14.074, z: -13.733, r: 4.4506, ws: false, dy: 0.735 },
+  { type: 'projector_screen', x: -14.912, z: 11.802, r: 4.7124, ws: false, dy: 0 },
 ];
+
 
