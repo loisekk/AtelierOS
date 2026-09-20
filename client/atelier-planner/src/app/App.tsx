@@ -236,7 +236,7 @@ function App() {
   const handleHire = (type: string, config: AgentConfig) => {
     setSelectedType(type);
     engineRef.current?.setSelectedItemType(type);
-    showToast(`${config.name} hired. Click Office Floor to place desk.`);
+    showToast(`${config.name} hired. Click anywhere in the office to seat them.`);
   };
 
   const handleConfigure = (id: string) => {
