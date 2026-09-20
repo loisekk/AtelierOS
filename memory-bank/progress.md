@@ -86,6 +86,28 @@
       their rooms.
       NOTE: user-layout.json is DOUBLE-ENCODED (a JSON string wrapping
       escaped JSON) — scripted edits must operate on the escaped form.
+- [x] v4.2.1 AGENT + PROJECTOR OVERHAUL (7 commits, gates 0/0, live-verified):
+      · AGENTS = BODY ONLY — frontend_desk factory spawns chair + seated
+        humanoid (userData.isAgent/agentRole), no bundled workstation;
+      · POINT-SPAWN — role branch of placeItem seats the agent AT the clicked
+        point (getAvailableWorkstation teleport-hire removed); drop ≤1.6m from
+        a manual ws desk → mirrors desk transform + links its screens;
+      · AVATAR ANATOMY — old knee pivoted shin −90° (legs stuck out at seat
+        height = "ugly legs"); now thigh horizontal → knee, shin vertical →
+        floor, shoe flat; arms reach keyboard (+z); avatar rotated π so eyes
+        face monitors; returnAgentToDesk uses the same seated pose;
+      · ALWAYS-CLICKABLE agents outside Customize Mode (select/configure,
+        never draggable) in onPointerDown picking;
+      · PROJECTOR SCREEN — the wall-welded DAG fixture (createDAGScreen) is
+        GONE; new `projector_screen` Display catalog item (placeable, movable,
+        rotatable, deletable) adopts the SHARED DAG canvas via
+        ScreenManager.adoptDAGCanvas()/registerDAGScreen(); updateDAG redraws
+        all registered screens; autoFurnish ships one at Command Hub
+        (−4.5, −2.4, dy 0.735 = hub platform height, facing hub);
+      · BANNERS restyled to image-3 (compact dark pill 0.82α, title, divider,
+        accent sub);
+      · live verify: agent at exact click point (6,12), projector streaming
+        DAG canvas, validateLayout 184 OK · 0 err · 0 warn.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
