@@ -29,9 +29,9 @@ export class RoomBoards {
   static zoneIdAt(x: number, z: number): string | null {
     const zn = ROOM_ZONES.find(q => x >= q.minX && x <= q.maxX && z >= q.minZ && z <= q.maxZ);
     if (zn) return zn.id;
-    // v4.1 — nearest-zone fallback (mirrors ObjectRegistry.inferRoom): boards in
-    // the NE/SE clusters sit on real floor just outside their zone rects and
-    // were showing blank because this returned null. Same 3m edge distance.
+    // v4.1 — nearest-zone fallback (mirrors ObjectRegistry.inferRoom, 10m edge
+    // distance): boards in the NE/SE clusters sit on raycast-verified real floor
+    // outside the zone rects and were showing blank because this returned null.
     let best: string | null = null;
     let bestD = Infinity;
     for (const q of ROOM_ZONES) {
@@ -40,7 +40,7 @@ export class RoomBoards {
       const d = Math.hypot(x - nx, z - nz);
       if (d < bestD) { bestD = d; best = q.id; }
     }
-    return bestD <= 3 ? best : null;
+    return best && bestD <= 10 ? best : null;
   }
 
   /** Route an agent's log line into its room buffer. */
