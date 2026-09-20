@@ -21,14 +21,14 @@ export function createAgentAvatar(brandColor: string): THREE.Group {
   g.add(hips);
 
   // ── TORSO (Sweater with collar detail) ──
-  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.48, 0.32), sweaterMat);
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.46, 0.28), sweaterMat);
   torso.position.y = 0.78;
   torso.castShadow = true;
   g.add(torso);
 
   // Collar/neck base
-  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.14, 0.08, 12), sweaterMat);
-  collar.position.y = 1.03;
+  const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 0.08, 12), sweaterMat);
+  collar.position.y = 1.02;
   g.add(collar);
 
   // ── HEAD GROUP ──
@@ -88,24 +88,24 @@ export function createAgentAvatar(brandColor: string): THREE.Group {
   templeR.position.set(0.13, 0.14, 0.06);
   headGroup.add(templeR);
 
-  // ── ARMS (with hands) ──
+  // ── ARMS (with hands) — reach FORWARD (toward the desk/monitor side) ──
   const createArm = (x: number) => {
     const arm = new THREE.Group();
-    arm.position.set(x, 1.0, 0);
-    
-    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.32, 0.11), sweaterMat);
-    upper.position.y = -0.16;
+    arm.position.set(x, 0.98, 0.04);
+
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.26, 0.12), sweaterMat);
+    upper.position.y = -0.13;
     upper.castShadow = true;
     arm.add(upper);
 
-    const lower = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.32, 0.1), skinMat);
-    lower.position.y = -0.42;
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.24, 0.1), skinMat);
+    lower.position.set(0, -0.36, 0.14);
     lower.castShadow = true;
     arm.add(lower);
 
     // Hand
     const hand = new THREE.Mesh(new THREE.BoxGeometry(0.09, 0.08, 0.12), handMat);
-    hand.position.set(0, -0.58, 0.02);
+    hand.position.set(0, -0.52, 0.2);
     hand.castShadow = true;
     arm.add(hand);
 
@@ -117,38 +117,36 @@ export function createAgentAvatar(brandColor: string): THREE.Group {
   g.add(leftArm);
   g.add(rightArm);
 
-  // Initial arm pose: resting on desk (keyboard position)
-  leftArm.rotation.x = -1.25;
-  rightArm.rotation.x = -1.25;
+  // Initial arm pose: resting toward the keyboard (soft forward reach)
+  leftArm.rotation.x = -0.5;
+  rightArm.rotation.x = -0.5;
 
-  // ── LEGS (Seated at 90° bend) ──
+  // ── LEGS (Seated: thigh horizontal → knee, shin vertical → floor) ──
+  // v4.2 fix — the old knee pivoted the shin −90° so it stuck out FORWARD at
+  // knee height like a broken hinge ("legs way too ugly"). Real seated anatomy:
+  // thigh horizontal from hip to knee, shin straight DOWN from knee to floor.
+  // Avatar root ≈ seat top (chair seat 0.49); hip joints at local y 0.45.
   const createLeg = (x: number) => {
     const leg = new THREE.Group();
-    leg.position.set(x, 0.38, 0);
-    
-    // Upper leg (thigh)
-    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.42, 0.16), pantsMat);
-    upper.position.y = -0.21;
+    leg.position.set(x, 0.45, 0);
+
+    // Thigh — horizontal, extends forward (+z): hip → knee (world ≈ 0.43)
+    const upper = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.16, 0.44), pantsMat);
+    upper.position.set(0, -0.08, 0.22);
     upper.castShadow = true;
     leg.add(upper);
 
-    // Knee joint
-    const knee = new THREE.Group();
-    knee.position.set(0, -0.42, 0);
-    knee.rotation.x = -Math.PI / 2;
-    leg.add(knee);
-
-    // Lower leg (shin)
-    const lower = new THREE.Mesh(new THREE.BoxGeometry(0.15, 0.42, 0.15), pantsMat);
-    lower.position.set(0, -0.21, 0.21);
+    // Shin — vertical from the knee (world 0.43) down to the floor (0.05)
+    const lower = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.38, 0.16), pantsMat);
+    lower.position.set(0, -0.27, 0.44);
     lower.castShadow = true;
-    knee.add(lower);
+    leg.add(lower);
 
-    // Shoe
-    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.12, 0.28), shoeMat);
-    shoe.position.set(0, -0.36, 0.08);
+    // Shoe flat on the floor, toe forward
+    const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.17, 0.1, 0.3), shoeMat);
+    shoe.position.set(0, -0.4, 0.5);
     shoe.castShadow = true;
-    knee.add(shoe);
+    leg.add(shoe);
 
     return leg;
   };
