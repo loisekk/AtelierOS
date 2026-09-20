@@ -75,12 +75,35 @@ export class ScreenManager {
     this.drawDAGScreen(mesh, this.dagNodes);
   }
 
-  public updateDAG(scene: THREE.Scene, steps: DagStep[]) {
+  private dagScreens: THREE.Mesh[] = [];
+  private dagShared: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture } | null = null;
+
+  /** v4.2 — shared DAG canvas adopted by every projector_screen in the office. */
+  public adoptDAGCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture } {
+    if (!this.dagShared) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1024; canvas.height = 512;
+      const ctx = canvas.getContext('2d')!;
+      const texture = new THREE.CanvasTexture(canvas);
+      this.dagShared = { canvas, ctx, texture };
+    }
+    return this.dagShared;
+  }
+
+  /** Register a placed projector screen to receive live DAG redraws. */
+  public registerDAGScreen(mesh: THREE.Mesh) {
+    const shared = this.adoptDAGCanvas();
+    mesh.userData.dagCtx = shared.ctx;
+    mesh.userData.dagTexture = shared.texture;
+    if (!this.dagScreens.includes(mesh)) this.dagScreens.push(mesh);
+    this.drawDAGScreen(mesh, this.dagNodes);
+  }
+
+  public updateDAG(_scene: THREE.Scene, steps: DagStep[]) {
     this.dagNodes = steps;
-    if (this.dagMesh) { this.drawDAGScreen(this.dagMesh, steps); return; }
-    scene.traverse(obj => {
-      if (obj instanceof THREE.Mesh && obj.userData.screenType === 'dag') this.drawDAGScreen(obj, steps);
-    });
+    if (this.dagMesh) this.drawDAGScreen(this.dagMesh, steps);
+    // v4.2 — every registered projector screen streams the live graph
+    this.dagScreens.forEach(m => this.drawDAGScreen(m, steps));
   }
 
   private drawDAGScreen(mesh: THREE.Mesh, steps: DagStep[]) {
