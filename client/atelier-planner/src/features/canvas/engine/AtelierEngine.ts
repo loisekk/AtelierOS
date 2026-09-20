@@ -2,7 +2,6 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { ITEM_CATALOG } from '../../furniture/catalog';
-import { createAgentAvatar } from '../../furniture/factories/avatars';
 import type { PlacedItemMeta, AgentStatus, AgentConfig } from '../../ai-agents/types';
 import { addRoomLabels } from '../architecture/roomLabels';
 import { loadBuildingGLB } from '../architecture/BuildingLoader';
@@ -194,7 +193,8 @@ export class AtelierEngine {
       this.autoFurnish();
       this.roomLabelsGroup = addRoomLabels(this.scene, WORLD.floorY);
       this.initBrain(this.detectBrainAnchor(building));
-      this.screenManager.createDAGScreen(this.scene, WORLD.floorY);
+      // v4.2 — the DAG wall fixture is GONE: the big screen is now a real
+      // Display catalog item (projector_screen), shipped by autoFurnish below.
     }).catch(err => console.error("Failed to load building GLB", err));
 
     this.screenManager = new ScreenManager();
@@ -265,6 +265,10 @@ export class AtelierEngine {
     });
     this._autoFurnishing = false;
     this.history = [];
+    // v4.2 — ship the PROJECTOR SCREEN: the old wall-welded DAG fixture, now
+    // real Display furniture (movable/rotatable/deletable), standing on the
+    // Command Hub platform (raycast floor 11.426 → dy 0.735), facing the hub.
+    this.placeItem('projector_screen', new THREE.Vector3(-4.5, WORLD.floorY, -2.4), Math.PI, undefined, 0.735);
     const wsCount = layout.filter(e => e.ws).length;
     console.log(`🪑 Auto-furnished ${layout.length} items · ${wsCount} screen-linked desks (canonical v${DEFAULT_OFFICE_LAYOUT_VERSION}, preset '${preset}').`);
     this.roomBoards?.redraw(this.placedItems, this.meshes); // initial "boards online" state
@@ -688,9 +692,16 @@ export class AtelierEngine {
         let n: THREE.Object3D | null = hits[0].object;
         while (n) {
           if (n.userData.placedId) {
-            // v4.0: furniture is FROZEN outside Customize Mode — clicking it can
-            // never select or start a drag; camera orbit/pan/zoom stay fully alive.
-            if (this.customizing) {
+            const pid: string = n.userData.placedId;
+            const item = this.placedItems.find(i => i.id === pid);
+            if (item?.role) {
+              // v4.2 — AGENTS ARE ALWAYS CLICKABLE (select/configure), even
+              // with furniture frozen outside Customize Mode. Never draggable.
+              if (this.selectedId === item.id) this.setSelected(null);
+              else this.setSelected(item.id);
+            } else if (this.customizing) {
+              // v4.0: furniture is FROZEN outside Customize Mode — clicking it can
+              // never select or start a drag; camera orbit/pan/zoom stay fully alive.
               if (this.selectedId === n.userData.placedId) this.setSelected(null);
               else { this.setSelected(n.userData.placedId); this.draggingId = n.userData.placedId; }
             } else {
@@ -805,34 +816,32 @@ export class AtelierEngine {
 
   public placeItem(type: string, pos: THREE.Vector3, rotY = 0, config?: AgentConfig, yOffset = 0): string {
     const item = ITEM_CATALOG[type];
-    let mesh = item.factory(this.brandColor);
+    const mesh = item.factory(this.brandColor);
     const y = WORLD.floorY + yOffset;
 
     if (item.role) {
-      const anchor = this.workstationRegistry?.getAvailableWorkstation();
-      if (anchor) {
-        if (anchor.manual && anchor.deskItemId) {
-          const deskMesh = this.meshes.get(anchor.deskItemId);
-          if (deskMesh) {
-            const screens: THREE.Mesh[] = [];
-            deskMesh.traverse(c => {
-              if (c instanceof THREE.Mesh && c.userData.isScreen) screens.push(c);
-            });
-            mesh = new THREE.Group();
-            const av = createAgentAvatar(this.brandColor);
-            av.position.set(0, 0.04, 0.4);
-            mesh.add(av);
-            mesh.position.copy(anchor.position);
-            mesh.rotation.y = anchor.rotY ?? 0;
-            mesh.userData.linkedScreens = screens;
-          }
-        } else {
-          mesh.position.set(anchor.position.x, y, anchor.position.z);
-          mesh.rotation.y = rotY;
-        }
-        mesh.userData.workstationId = anchor.id;
+      // v4.2 — AGENT = BODY ONLY, placed WHERE THE CEO POINTS. The old flow
+      // teleport-hired agents onto the first free workstation (random-looking
+      // placement) and bundled a full desk. Now: seat the agent at the cursor
+      // — unless dropped right on a manual workstation desk, then mirror the
+      // desk's transform (same platform height, facing its monitors) and link
+      // its screens so terminal/status streaming keeps working.
+      const deskHit = this.placedItems.find(i =>
+        i.ws && this.meshes.has(i.id) &&
+        Math.hypot(i.position.x - pos.x, i.position.z - pos.z) < 1.6);
+      const deskMesh = deskHit ? this.meshes.get(deskHit.id) : null;
+      if (deskMesh && deskHit) {
+        // Seat on the desk's chair side (+z local = away from its monitors),
+        // facing the desk: the agent group's −z (avatar rotated π) → monitors.
+        const s = Math.sin(deskMesh.rotation.y), c = Math.cos(deskMesh.rotation.y);
+        mesh.position.set(deskMesh.position.x + s * 0.95, deskMesh.position.y, deskMesh.position.z + c * 0.95);
+        mesh.rotation.y = deskMesh.rotation.y;
+        const screens: THREE.Mesh[] = [];
+        deskMesh.traverse(cc => {
+          if (cc instanceof THREE.Mesh && cc.userData.isScreen) screens.push(cc);
+        });
+        mesh.userData.linkedScreens = screens;
       } else {
-        console.warn('No available workstation. Placing employee at cursor position.');
         mesh.position.set(this.clampX(pos.x), y, this.clampZ(pos.z));
         mesh.rotation.y = rotY;
       }
@@ -849,13 +858,24 @@ export class AtelierEngine {
 
     mesh.traverse(c => {
       if (c.userData.isAvatar) this.avatars.set(id, c as THREE.Group);
-      if (c instanceof THREE.Mesh && c.userData.isScreen && (c.userData.screenType === 'terminal' || c.userData.screenType === 'status' || c.userData.screenType === 'room_board')) {
+      if (c instanceof THREE.Mesh && c.userData.isScreen &&
+          (c.userData.screenType === 'terminal' || c.userData.screenType === 'status' || c.userData.screenType === 'room_board' || c.userData.screenType === 'dag')) {
         if (!c.userData.screenData) {
-          const screenData = this.screenManager.createScreenTexture();
-          (c.material as THREE.MeshStandardMaterial).map = screenData.texture;
-          (c.material as THREE.MeshStandardMaterial).emissiveMap = screenData.texture;
-          (c.material as THREE.MeshStandardMaterial).needsUpdate = true;
-          c.userData.screenData = screenData;
+          if (c.userData.screenType === 'dag') {
+            // v4.2 — projector ADOPTS the shared DAG canvas (one live graph on
+            // every projector; no per-instance texture).
+            const shared = this.screenManager.adoptDAGCanvas();
+            (c.material as THREE.MeshBasicMaterial).map = shared.texture;
+            (c.material as THREE.MeshBasicMaterial).needsUpdate = true;
+            c.userData.screenData = shared;
+            this.screenManager.registerDAGScreen(c);
+          } else {
+            const screenData = this.screenManager.createScreenTexture();
+            (c.material as THREE.MeshStandardMaterial).map = screenData.texture;
+            (c.material as THREE.MeshStandardMaterial).emissiveMap = screenData.texture;
+            (c.material as THREE.MeshStandardMaterial).needsUpdate = true;
+            c.userData.screenData = screenData;
+          }
         }
       }
     });
