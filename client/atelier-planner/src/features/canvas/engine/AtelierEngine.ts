@@ -3,7 +3,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { ITEM_CATALOG } from '../../furniture/catalog';
 import type { PlacedItemMeta, AgentStatus, AgentConfig } from '../../ai-agents/types';
-import { addRoomLabels } from '../architecture/roomLabels';
+import { addRoomLabels, updateBannerPlacement } from '../architecture/roomLabels';
 import { loadBuildingGLB } from '../architecture/BuildingLoader';
 import { BOUNDS, BRAIN_ANCHOR, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, V, WORLD } from '../architecture/SpatialConfig';
 import { RoomBoards } from './RoomBoards';
@@ -1136,6 +1136,9 @@ export class AtelierEngine {
     if (this.camera.position.y < WORLD.floorY + CAMERA_LIMITS.minCameraYOverFloor) {
       this.camera.position.y = WORLD.floorY + CAMERA_LIMITS.minCameraYOverFloor;
     }
+    // v4.2.4 — banners re-anchor every frame so they stay pinned to their
+    // room's top edge under ANY camera (parallax-compensated ground targets).
+    if (this.roomLabelsGroup) updateBannerPlacement(this.roomLabelsGroup, this.activeCamera, WORLD.floorY);
     this.renderer.render(this.scene, this.activeCamera);
   };
 
