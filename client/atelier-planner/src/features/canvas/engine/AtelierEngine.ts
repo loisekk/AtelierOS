@@ -6,7 +6,7 @@ import { createAgentAvatar } from '../../furniture/factories/avatars';
 import type { PlacedItemMeta, AgentStatus, AgentConfig } from '../../ai-agents/types';
 import { addRoomLabels } from '../architecture/roomLabels';
 import { loadBuildingGLB } from '../architecture/BuildingLoader';
-import { BOUNDS, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, ROOM_ZONES, V, WORLD } from '../architecture/SpatialConfig';
+import { BOUNDS, BRAIN_ANCHOR, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, V, WORLD } from '../architecture/SpatialConfig';
 import { RoomBoards } from './RoomBoards';
 import { WorkstationRegistry } from '../architecture/WorkstationRegistry';
 import { debugDrawZones } from '../architecture/RoomScanner';
@@ -512,15 +512,13 @@ export class AtelierEngine {
   }
 
   private initBrain(anchor: THREE.Vector3 | null) {
-    // v4.1 — BRAIN AS FURNITURE: this GLB is a single merged tripo_node with no
-    // semantic mesh names, so detectBrainAnchor() can never match (dead code,
-    // kept harmlessly for future multi-mesh GLBs). Deterministic zone-center
-    // placement is the only reliable anchor. The BRAIN_DAIS_Y positioning line
-    // below is intentionally untouched — the brain stands ON the dais.
-    const zone = ROOM_ZONES.find(z => z.id === 'brain_chamber');
-    const src = zone
-      ? new THREE.Vector3((zone.minX + zone.maxX) / 2, 0, (zone.minZ + zone.maxZ) / 2)
-      : (anchor ?? BRAIN_FALLBACK);
+    // v4.2 — BRAIN ON THE MEASURED DAIS. Raycast ground truth: the brain_chamber
+    // ZONE rect center (−16.25, 0) is inside the rotunda wall (first hit 14.14),
+    // while the raised dais (floorY + BRAIN_DAIS_Y) circles (−11.1, −0.3) with
+    // R ≈ 4.7. The brain, the 8-seat chair ring, and the CEO banner all derive
+    // from BRAIN_ANCHOR so they can never disagree again.
+    const src = new THREE.Vector3(BRAIN_ANCHOR.x, 0, BRAIN_ANCHOR.z);
+    void anchor;
     const g = this.brainGroup = new THREE.Group();
     g.position.set(src.x, WORLD.floorY + BRAIN_DAIS_Y, src.z);
 
