@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { ROOM_ZONES, BRAIN_ANCHOR } from './SpatialConfig';
+import { ROOM_ZONES } from './SpatialConfig';
 import type { RoomId } from './SpatialConfig';
 
 /**
@@ -27,8 +27,10 @@ export function roomBannerFor(zoneId: string): { text: string; sub: string; acce
   return (ROOM_BANNERS as Record<string, { text: string; sub: string; accent: string }>)[zoneId] ?? null;
 }
 
-const BANNER_Y = 4.8;  // hover height above the walls (world units over baseY)
-const BANNER_W = 5.2;  // sprite world width (height keeps the canvas aspect)
+const BANNER_INSET = 1.75;  // visual target: this far inside the room's rear (−X) wall
+const BANNER_HOVER = 4.2;   // hover height above the dollhouse walls (world units over floorY)
+const BANNER_W = 5.2;       // sprite world width (height keeps the canvas aspect)
+const BANNER_PUSH_CAP = 13; // max parallax compensation (near-horizontal camera views)
 
 function createLabelTexture(text: string, subtext: string, accent: string): THREE.Texture {
   const canvas = document.createElement('canvas');
@@ -61,21 +63,94 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
 }
 
 /**
- * Banner anchor for a zone. v4.2.2 — GEOMETRIC room center (zone rect center),
- * matching the reference top-down render: banners must sit centered over their
- * room regardless of how the CEO rearranges furniture (centroid anchoring made
- * banners drift toward neighbors on every customize pass — e.g. the front
- * reception banner sliding toward the lounge). Exception: brain_chamber is
- * pinned to BRAIN_ANCHOR (raycast-measured dais center) because its rect
- * center lands inside the rotunda wall.
+ * v4.2.4 — GROUND-TARGET banners + per-camera parallax compensation.
+ * A hovering sprite is a fixed world point, but the oblique dollhouse camera
+ * (elevation ≈ 28–40°) shifts a point at hover height ≈8 ground units
+ * "up-screen" toward the rotunda — one full room row. That is exactly what
+ * made the v4.2.3 static anchors break: top-row banners floated over the
+ * roofline and every other banner sat over the room ABOVE its own. A static
+ * anchor can never satisfy both the dollhouse view and the 2D top view
+ * (ortho has zero parallax), so placement is now rule-based + camera-aware:
+ *   · GROUND TARGET — the point the banner must visually sit over: the
+ *     room's rear (−X) wall + BANNER_INSET, centered across its width.
+ *   · updateBannerPlacement() casts the camera ray through that ground point
+ *     onto the hover plane, so the sprite projects EXACTLY onto the target's
+ *     screen point at ANY camera angle — the banner reads as pinned above
+ *     its room's top edge in every view (image-3 rule).
+ *   · brain_chamber is FIXED: pinned to the rotunda's west rim, north of
+ *     the dais (never on the brain). The 14-unit rotunda wall would swallow
+ *     any compensated move, so the rim itself is the target.
+ *   · command_hub insets from the rotunda's east face instead of zone.minX —
+ *     the brain zone rect (minX −10) sits INSIDE the rotunda ring, so the
+ *     zone-derived west wall would land the banner on the ring, not the hub.
  */
-function bannerAnchor(zone: (typeof ROOM_ZONES)[number]): [number, number] {
-  if (zone.id === 'brain_chamber') return [BRAIN_ANCHOR.x, BRAIN_ANCHOR.z];
-  return [(zone.minX + zone.maxX) / 2, (zone.minZ + zone.maxZ) / 2];
+const BANNER_GROUND: Partial<Record<RoomId, { x: number; z: number; hover?: number; fixed?: boolean }>> = {
+  brain_chamber: { x: -16.0, z: -0.3, hover: 4.8, fixed: true },
+  command_hub:   { x: -4.2,  z: 0 },
+};
+
+interface BannerGround { x: number; z: number; hover: number; fixed: boolean }
+
+const ZONES_BY_ID = new Map(ROOM_ZONES.map(zone => [zone.id, zone]));
+
+function bannerGround(zone: (typeof ROOM_ZONES)[number]): BannerGround {
+  const hit = BANNER_GROUND[zone.id];
+  if (hit) return { x: hit.x, z: hit.z, hover: hit.hover ?? BANNER_HOVER, fixed: !!hit.fixed };
+  return {
+    x: zone.minX + BANNER_INSET,
+    z: (zone.minZ + zone.maxZ) / 2,
+    hover: BANNER_HOVER,
+    fixed: false,
+  };
+}
+
+// Scratch vector — no per-frame allocation in the render loop.
+const _camPos = new THREE.Vector3();
+
+/**
+ * Per-frame banner placement: compensates the active camera's parallax so
+ * every banner projects exactly onto its room's ground target. Ortho (2D
+ * view) has zero parallax — sprites sit straight above the target. Call
+ * after controls.update() and before render.
+ */
+export function updateBannerPlacement(group: THREE.Group, camera: THREE.Camera, floorY: number): void {
+  group.children.forEach(child => {
+    const sprite = child as THREE.Sprite;
+    const zoneId = sprite.userData.zone as RoomId | undefined;
+    const zone = zoneId ? ZONES_BY_ID.get(zoneId) : undefined;
+    if (!zone) return;
+    const g = bannerGround(zone);
+    const hoverY = floorY + g.hover;
+    if (g.fixed || (camera as THREE.OrthographicCamera).isOrthographicCamera) {
+      sprite.position.set(g.x, hoverY, g.z);
+      return;
+    }
+    _camPos.copy(camera.position);
+    // Perspective: intersect the camera→ground-target ray with the hover
+    // plane. The sprite center then projects exactly onto the target's
+    // screen point. t = (hoverY − camY) / (floorY − camY).
+    const denom = floorY - _camPos.y; // < 0 looking down · > 0 looking up
+    let t = 1;
+    if (Math.abs(denom) > 1e-3) {
+      t = (hoverY - _camPos.y) / denom;
+      // Cap the compensation: near-horizontal views would fling sprites far
+      // east (and shrink them); clamp instead of chasing the target exactly.
+      const horiz = Math.hypot(g.x - _camPos.x, g.z - _camPos.z);
+      if (horiz > 1e-3) t = Math.min(t, (horiz + BANNER_PUSH_CAP) / horiz);
+      t = Math.max(t, 0.05);
+    }
+    sprite.position.set(
+      _camPos.x + (g.x - _camPos.x) * t,
+      hoverY,
+      _camPos.z + (g.z - _camPos.z) * t,
+    );
+  });
 }
 
 /**
- * Adds one transparent banner sprite per room (furniture-centroid anchored).
+ * Adds one transparent banner sprite per room. Initial placement uses the
+ * ground targets; the engine re-runs updateBannerPlacement() every frame so
+ * banners stay pinned to their room's top edge as the camera moves.
  * Returns the group so the engine can toggle visibility (Labels button).
  */
 export function addRoomLabels(scene: THREE.Scene, baseY: number): THREE.Group {
@@ -89,8 +164,9 @@ export function addRoomLabels(scene: THREE.Scene, baseY: number): THREE.Group {
       transparent: true,
       depthWrite: false,
     }));
-    const [cx, cz] = bannerAnchor(zone);
-    sprite.position.set(cx, baseY + BANNER_Y, cz);
+    sprite.userData.zone = zone.id;
+    const g = bannerGround(zone);
+    sprite.position.set(g.x, baseY + g.hover, g.z);
     sprite.scale.set(BANNER_W, BANNER_W * (160 / 512), 1);
     group.add(sprite);
   });
