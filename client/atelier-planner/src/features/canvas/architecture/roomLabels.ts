@@ -1,6 +1,7 @@
 import * as THREE from 'three';
-import { ROOM_ZONES } from './SpatialConfig';
+import { ROOM_ZONES, BRAIN_ANCHOR } from './SpatialConfig';
 import type { RoomId } from './SpatialConfig';
+import { USER_DEFAULT_LAYOUT } from './layout/userDefaultLayout';
 
 /**
  * Room banners v2 — content + placement DERIVED FROM ROOM_ZONES.
@@ -57,7 +58,25 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
 }
 
 /**
- * Adds one transparent banner sprite per ROOM_ZONES center.
+ * Banner anchor for a zone. v4.1: derived from the CEO's hand-placed furniture
+ * centroid (USER_DEFAULT_LAYOUT = the ground truth of where each room really
+ * is), NOT the zone rect center — the rects drift from the GLB rooms (the
+ * brain_chamber rect center sits inside the rotunda wall). brain_chamber is
+ * pinned to BRAIN_ANCHOR (raycast-measured dais center) so the banner, the
+ * brain mesh and the chair ring can never disagree.
+ */
+function bannerAnchor(zone: (typeof ROOM_ZONES)[number]): [number, number] {
+  if (zone.id === 'brain_chamber') return [BRAIN_ANCHOR.x, BRAIN_ANCHOR.z];
+  const inZone = USER_DEFAULT_LAYOUT.filter(e =>
+    e.x >= zone.minX && e.x <= zone.maxX && e.z >= zone.minZ && e.z <= zone.maxZ);
+  if (inZone.length === 0) return [(zone.minX + zone.maxX) / 2, (zone.minZ + zone.maxZ) / 2];
+  const cx = inZone.reduce((s, e) => s + e.x, 0) / inZone.length;
+  const cz = inZone.reduce((s, e) => s + e.z, 0) / inZone.length;
+  return [cx, cz];
+}
+
+/**
+ * Adds one transparent banner sprite per room (furniture-centroid anchored).
  * Returns the group so the engine can toggle visibility (Labels button).
  */
 export function addRoomLabels(scene: THREE.Scene, baseY: number): THREE.Group {
@@ -71,11 +90,8 @@ export function addRoomLabels(scene: THREE.Scene, baseY: number): THREE.Group {
       transparent: true,
       depthWrite: false,
     }));
-    sprite.position.set(
-      (zone.minX + zone.maxX) / 2,
-      baseY + BANNER_Y,
-      (zone.minZ + zone.maxZ) / 2,
-    );
+    const [cx, cz] = bannerAnchor(zone);
+    sprite.position.set(cx, baseY + BANNER_Y, cz);
     sprite.scale.set(BANNER_W, BANNER_W * (160 / 512), 1);
     group.add(sprite);
   });
