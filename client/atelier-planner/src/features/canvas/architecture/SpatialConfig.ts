@@ -27,6 +27,16 @@ export const BRAIN_FALLBACK = V([-11.2, 2.6, 0.4]);
 /** Raised circular dais the brain stands on (GLB-measured: dais floor = base + 0.73). */
 export const BRAIN_DAIS_Y = 0.73;
 
+/** v4.1 MEASURED rotunda anchor — the only valid brain/chair/banner ruler.
+ *  Triangulated three ways: (1) wall-circle Kasa fit center (−10.65, −0.33),
+ *  (2) chord fit in the comment above (−11.1, 0.4), (3) dais raycast probes —
+ *  (−15.25,0)/(−14.25,0)/(−11.15,−0.55) all floor = base+0.73, while
+ *  (−16.25,±2) is base floor. Dais radius ≈ 4.7 around this center; all 8
+ *  chair slots at R 3.6 raycast-verified on the dais (11.416–11.426, clear above).
+ *  ⚠ The brain_chamber ZONE rect center (−16.25, 0) lands INSIDE the rotunda
+ *  wall (raycast 14.14 = wall top) — never anchor anything to the zone center. */
+export const BRAIN_ANCHOR = V([-11.1, 0, -0.3]);
+
 /** DAG dispatch screen mount — GLB-probed Command Hub north wall (z=−3.76), which
  *  the 'command' camera rig faces directly. The raised platform (offset 0.735)
  *  continues into the hub; eye = 1.8 above it. Screen face looks +z (into room). */
