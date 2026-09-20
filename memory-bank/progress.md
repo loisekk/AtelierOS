@@ -61,10 +61,31 @@
       RoomBoards header mirrors banner (title + accent subtitle),
       AtelierEngine.setRoomLabelsVisible(), TopBar "Labels" toggle wired
       through App state. Gates: typecheck 0, lint 0. Committed ×5 (1 file each).
-- [ ] Browser verify: resetOffice() → validateLayout() → screenshots
+- [x] Browser verify: resetOffice() → validateLayout() → screenshots
       (chamber A+B, shelves C, banners centered + transparent + toggle);
       manual log test:
       `updateAgentLog('<agentId>','TEST: board routing works')` → board lights up.
+- [x] v4.2 GEOMETRIC GROUND TRUTH PASS (banner/brain/chair re-anchor):
+      raycast + vertex-fit measurement of the merged tripo GLB revealed:
+      · brain_chamber ZONE rect center (−16.25, 0) is INSIDE the rotunda wall
+        (raycast first-hit 14.14 = wall top);
+      · true rotunda dais: level = floorY + 0.73 spanning x −15…−7, center
+        triangulated (wall Kasa fit −10.65/−0.33 · chord fit −11.1/0.4 ·
+        dais probes) → **BRAIN_ANCHOR = (−11.1, −0.3)** in SpatialConfig;
+      · the ENTIRE east half (NE library / SE lounge clusters) is REAL
+        interior floor (footprint x −21.9…22.5, z −21.1…20.3) — the 41
+        OUTSIDE-building errors were false (strict rect test).
+      Fixes committed ×10 (1 file each): BRAIN_ANCHOR export · initBrain
+      anchored to it · brainChamber dais ring (R 3.6, dy 0.73, verified
+      on-dais 11.416–11.426) · userDefaultLayout + user-layout.json ring
+      re-anchor (6→8 chairs, parity) · roomLabels v3 (furniture-centroid
+      banners + brain pin) · inferRoom + zoneIdAt nearest-zone fallback
+      (10m edge distance). Gates 0/0. validateLayout: **182 OK · 0 err ·
+      0 warn** (first fully-clean run). Top-view screenshot verified:
+      brain centered on dais, 8 chairs ringing it, all 10 banners over
+      their rooms.
+      NOTE: user-layout.json is DOUBLE-ENCODED (a JSON string wrapping
+      escaped JSON) — scripted edits must operate on the escaped form.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
