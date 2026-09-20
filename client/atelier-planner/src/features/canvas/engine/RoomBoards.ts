@@ -43,6 +43,19 @@ export class RoomBoards {
     return best && bestD <= 10 ? best : null;
   }
 
+  /**
+   * v4.2.2 — Room attribution for WALL SCREENS: a board displays the room it
+   * FACES INTO (its plane normal, +z rotated by rotY), not whichever zone rect
+   * its anchor happens to fall in. Boards mounted at rect boundaries were
+   * resolving to the same neighbor room and rendering identical content —
+   * e.g. the two mid-spine boards both showed MEETING ROOM. Probe 2.2m along
+   * the facing direction; fall back to the anchor's own zone.
+   */
+  static zoneIdForScreen(x: number, z: number, rot = 0): string | null {
+    const fx = Math.sin(rot), fz = Math.cos(rot); // plane normal (+z) rotated by rotY
+    return RoomBoards.zoneIdAt(x + fx * 2.2, z + fz * 2.2) ?? RoomBoards.zoneIdAt(x, z);
+  }
+
   /** Route an agent's log line into its room buffer. */
   public routeLog(agentPos: { x: number; z: number }, log: string): void {
     const rid = RoomBoards.zoneIdAt(agentPos.x, agentPos.z);
@@ -57,13 +70,13 @@ export class RoomBoards {
     this.roomLogs.clear();
   }
 
-  /** Redraw every wall_screen with live data for its room. */
+  /** Redraw every wall_screen with live data for the room it faces into. */
   public redraw(placedItems: PlacedItemMeta[], meshes: Map<string, THREE.Group>): void {
     const boardsByRoom = new Map<string, THREE.Group[]>();
     for (const item of placedItems) {
       if (item.type !== 'wall_screen') continue;
       const mesh = meshes.get(item.id);
-      const rid = RoomBoards.zoneIdAt(item.position.x, item.position.z);
+      const rid = RoomBoards.zoneIdForScreen(item.position.x, item.position.z, item.rotation);
       if (!mesh || !rid) continue;
       const list = boardsByRoom.get(rid) ?? [];
       list.push(mesh);
