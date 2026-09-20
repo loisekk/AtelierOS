@@ -176,6 +176,27 @@
       · Gates: bun run typecheck 0 · bun run lint 0. Live verify when the
         dev server is up: every banner should project over its room's
         furniture centroid at any camera angle.
+- [x] v4.2.6 CLOSE-ORBIT BANNER FADE (gates 0/0):
+      · Runtime label dump (10 sprites, y 14.9/brain 15.5) decoded: app was
+        still on v4.2.4 (positions = old rect-inset targets to the decimal;
+        floorY ≈ 10.7 = 14.9 − 4.2 hover, consistent with dais raycast
+        base+0.73 @ 11.4 → labels were NEVER at roof height). depthTest
+        already true (SpriteMaterial default). Zone grid NOT shifted —
+        ROOM_ZONES span x −22.5…+22.5 symmetric; the west cluster was the
+        BANNER_INSET rear-wall artifact (fixed in v4.2.5). A reload picks
+        v4.2.5 up; no SpatialConfig edit warranted.
+      · Remaining UX gap (all 10 banners superimposed while orbiting close
+        over the open-top diorama): updateBannerPlacement now drives per-
+        sprite opacity — ortho 2D top: always full; camera ≥40 from origin
+        (default office rig ≈ 43): full; camera ≤22: banners within 25 units
+        of the camera stay full, the rest fade to 0 over a 45-unit span
+        (smoothstep blend between the two regimes — no popping mid-orbit).
+        Explicitly NOT the external proposal's 26/52 thresholds, which would
+        fade every banner at the default office camera (label distances
+        34–60 there). roomLabels rewrite rejected: it re-derived targets
+        from zone-rect centers (the class v4.2.5 removed) and would have
+        clobbered the measured brain rim override.
+      · Gates: bun run typecheck 0 · bun run lint 0.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
