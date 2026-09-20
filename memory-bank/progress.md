@@ -127,6 +127,31 @@
       · Verified live: resetOffice → 182 items, projectors in place,
         validateLayout 182 OK · 0 err · 0 warn; top-view screenshot — every
         banner over its room.
+- [x] v4.2.4 GROUND-TARGET BANNERS + PARALLAX COMPENSATION (2 commits, gates
+      0/0, live-verified office + 2D top):
+      · ROOT CAUSE of the "wrong banner rows" report: a static sprite at
+        hover height shifts ≈8 ground units up-screen at the oblique dollhouse
+        camera (elevation 28–40°) — one full room row. Top-row banners floated
+        over the roofline; every other banner sat over the room ABOVE its own.
+        No static anchor can satisfy dollhouse + 2D top (ortho = zero parallax).
+      · roomLabels v4.2.4 — banners are now GROUND TARGETS (room's rear −X
+        wall + 1.75 inset, centered across width) and updateBannerPlacement()
+        casts the camera ray through the target onto the hover plane each
+        frame → sprite projects EXACTLY onto the target at ANY camera angle.
+        Ortho/2D → sprite sits straight above the target. BANNER_HOVER 4.2;
+        parallax push capped at 13 units for near-horizontal views.
+      · Exceptions: brain_chamber FIXED at rotunda west rim (−16, −0.3, hover
+        4.8 — the 14-unit ring would swallow a compensated move; banner stays
+        north of the brain); command_hub insets from the rotunda's east face
+        (x −4.2) — the brain zone rect minX −10 sits INSIDE the rotunda ring,
+        so the zone-derived west wall ≠ the hub's real wall.
+      · engine: animate() calls updateBannerPlacement() after controls.update()
+        (guarded by roomLabelsGroup); sprites tag userData.zone for lookup —
+        index-based children mapping intentionally avoided.
+      · Gates: bun run typecheck 0 · bun run lint 0. Live verify:
+        .verify/banners-v424-office.jpeg + banners-v424-top.jpeg — every
+        banner pinned to its room's top edge, brain banner clear of the
+        brain, no roofline floaters at any camera angle.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;
