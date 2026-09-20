@@ -1,7 +1,6 @@
 import * as THREE from 'three';
 import { ROOM_ZONES, BRAIN_ANCHOR } from './SpatialConfig';
 import type { RoomId } from './SpatialConfig';
-import { USER_DEFAULT_LAYOUT } from './layout/userDefaultLayout';
 
 /**
  * Room banners v2 — content + placement DERIVED FROM ROOM_ZONES.
@@ -62,21 +61,17 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
 }
 
 /**
- * Banner anchor for a zone. v4.1: derived from the CEO's hand-placed furniture
- * centroid (USER_DEFAULT_LAYOUT = the ground truth of where each room really
- * is), NOT the zone rect center — the rects drift from the GLB rooms (the
- * brain_chamber rect center sits inside the rotunda wall). brain_chamber is
- * pinned to BRAIN_ANCHOR (raycast-measured dais center) so the banner, the
- * brain mesh and the chair ring can never disagree.
+ * Banner anchor for a zone. v4.2.2 — GEOMETRIC room center (zone rect center),
+ * matching the reference top-down render: banners must sit centered over their
+ * room regardless of how the CEO rearranges furniture (centroid anchoring made
+ * banners drift toward neighbors on every customize pass — e.g. the front
+ * reception banner sliding toward the lounge). Exception: brain_chamber is
+ * pinned to BRAIN_ANCHOR (raycast-measured dais center) because its rect
+ * center lands inside the rotunda wall.
  */
 function bannerAnchor(zone: (typeof ROOM_ZONES)[number]): [number, number] {
   if (zone.id === 'brain_chamber') return [BRAIN_ANCHOR.x, BRAIN_ANCHOR.z];
-  const inZone = USER_DEFAULT_LAYOUT.filter(e =>
-    e.x >= zone.minX && e.x <= zone.maxX && e.z >= zone.minZ && e.z <= zone.maxZ);
-  if (inZone.length === 0) return [(zone.minX + zone.maxX) / 2, (zone.minZ + zone.maxZ) / 2];
-  const cx = inZone.reduce((s, e) => s + e.x, 0) / inZone.length;
-  const cz = inZone.reduce((s, e) => s + e.z, 0) / inZone.length;
-  return [cx, cz];
+  return [(zone.minX + zone.maxX) / 2, (zone.minZ + zone.maxZ) / 2];
 }
 
 /**
