@@ -188,6 +188,10 @@ export const USER_DEFAULT_LAYOUT: LayoutEntry[] = [
   { type: 'plant_large', x: -4.12, z: -6.043, r: 0, ws: false, dy: 0 },
   { type: 'projector_screen', x: -14.074, z: -13.733, r: 4.4506, ws: false, dy: 0.735 },
   { type: 'projector_screen', x: -14.912, z: 11.802, r: 4.7124, ws: false, dy: 0 },
+  // ── Phase 13 additions (reception gate): ATELIER entrance mat + path lights ──
+  { type: 'entrance_mat', x: 20.276, z: 0, r: 0, ws: false, dy: 0 },
+  { type: 'path_light', x: 20.44, z: 2.604, r: 0, ws: false, dy: 0 },
+  { type: 'path_light', x: 20.44, z: -2.604, r: 0, ws: false, dy: 0 },
 ];
 
 

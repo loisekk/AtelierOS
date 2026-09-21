@@ -25,6 +25,14 @@
   --success: #4E9B67;
   --warn: #D09A46;
   --danger: #B85C52;
+
+  /* Phase 13 G — Warm glassmorphism tokens (light-frost variant) */
+  --glass-bg: rgba(244, 236, 224, 0.72);
+  --glass-bg-soft: rgba(244, 236, 224, 0.55);
+  --glass-border: rgba(120, 90, 60, 0.18);
+  --glass-blur: 14px;
+  --block-radius: 14px;
+  --block-shadow: 0 10px 36px rgba(60, 40, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   
   /* Compatibility mappings for older classes */
   --tech-cyan: #0EA5E9;
@@ -73,6 +81,12 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
 .panel-title { font-family: 'Archivo', sans-serif; font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--charcoal-3); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
 
 .hud { position: absolute; background: rgba(244, 235, 221, 0.85); backdrop-filter: blur(20px); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06); color: var(--charcoal); }
+/* HUD anchors — restored (the glass-theme edit dropped them, leaving the
+   chips stacked in the stage's top-left corner) */
+.hud-tl { top: 14px; left: 14px; }
+.hud-tr { top: 14px; right: 14px; }
+.hud-bl { bottom: 14px; left: 14px; }
+.hud-bc { bottom: 14px; left: 50%; transform: translateX(-50%); }
 .hud-tl { top: 14px; left: 14px; } .hud-tr { top: 14px; right: 14px; } .hud-bl { bottom: 14px; left: 14px; } .hud-bc { bottom: 14px; left: 50%; transform: translateX(-50%); }
 
 .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; }
@@ -105,5 +119,68 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
 .panel-right { border-left: 1px solid var(--line); overflow: hidden; background: var(--surface); backdrop-filter: blur(20px); }
 .stage { position: relative; min-width: 0; min-height: 0; background-color: var(--bg); background-image: linear-gradient(rgba(77, 56, 42, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(77, 56, 42, 0.03) 1px, transparent 1px), linear-gradient(rgba(77, 56, 42, 0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(77, 56, 42, 0.06) 1px, transparent 1px); background-size: 24px 24px, 24px 24px, 120px 120px, 120px 120px; }
 .stage > canvas { position: absolute; inset: 0; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 13 G — Glass UI system (Image-1 target):
+   full-bleed 3D stage, floating glass panels divided into blocks,
+   fully transparent top bar of glass chips.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Warm frosted-glass surface, shared by cards + chips */
+.glass-surface {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.35), transparent 45%), var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--block-shadow);
+}
+.glass-card {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.35), transparent 45%), var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--block-radius);
+  box-shadow: var(--block-shadow);
+  padding: 14px;
+  flex-shrink: 0;
+}
+.glass-chip {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.35), transparent 45%), var(--glass-bg-soft);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: 1px solid var(--glass-border);
+  border-radius: 11px;
+  box-shadow: 0 6px 22px rgba(60, 40, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+}
+
+/* Full-bleed stage: the 3D office runs edge-to-edge BEHIND the glass UI */
+.workspace-full { position: relative; height: 100%; min-height: 0; overflow: hidden; }
+.stage-full { position: absolute; inset: 0; z-index: 0; }
+
+/* Transparent top bar — floating glass chips, no bar background */
+.topbar-glass {
+  position: absolute; top: 0; left: 0; right: 0; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 16px; z-index: 50; background: transparent; border: none; pointer-events: none;
+}
+.topbar-glass > * { pointer-events: auto; }
+
+/* Floating panel columns — vertical stacks of glass blocks */
+.floating-left, .floating-right {
+  position: absolute; top: 72px; bottom: 14px; z-index: 40;
+  display: flex; flex-direction: column; gap: 10px;
+  overflow-y: auto; overflow-x: hidden; padding: 2px;
+}
+.floating-left { left: 14px; width: 240px; }
+.floating-right { right: 14px; width: 300px; }
+.floating-left > *, .floating-right > * { width: 100%; }
+
+/* HUD stays clickable over the full-bleed stage */
+.stage-hud-layer { position: absolute; inset: 0; z-index: 10; pointer-events: none; }
+.stage-hud-layer .hud, .stage-hud-layer > * { pointer-events: auto; }
 
 .panel-section-title { font-family: 'Archivo', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--charcoal-3); margin: 0 0 10px; }

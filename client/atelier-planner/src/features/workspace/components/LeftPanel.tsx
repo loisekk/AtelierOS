@@ -38,29 +38,34 @@ export const LeftPanel: FC<LeftPanelProps> = ({
   const furniture = Object.entries(ITEM_CATALOG).filter(([_, item]) => !item.role);
 
   return (
-    <aside className="panel" style={{ width: 240, display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--line)', background: 'var(--surface)' }}>
+    // Phase 13 G — floating glass column: each section is its own glass block,
+    // the full-bleed 3D office glows through the frosted background.
+    <aside style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10, background: 'transparent', border: 'none' }}>
       {mode === 'main' ? (
         <>
-          <div className="p-4 border-b" style={{ borderColor: 'var(--line)' }}>
+          <div className="glass-card">
             <div className="text-[10px] font-semibold tracking-widest uppercase" style={{ color: 'var(--charcoal-3)' }}>AI Company</div>
             <div className="text-[12px] mt-1 font-semibold" style={{ color: 'var(--charcoal)' }}>{placedCount} Employees</div>
           </div>
 
-          <div className="flex-1 overflow-y-auto scroll-thin p-2">
-            {NAV_ITEMS.map(item => (
-              <button 
-                key={item.label} 
-                onClick={() => setView(item.zone as 'office' | 'ceo' | 'command' | 'knowledge' | 'top')}
-                className="w-full flex items-center gap-3 p-2.5 rounded-md text-left transition-colors hover:bg-[var(--surface-2)]"
-              >
-                <i className={`fa-solid ${item.icon} text-[12px] w-5 text-center`} style={{ color: 'var(--accent)' }}></i>
-                <span className="text-[12px] font-medium" style={{ color: 'var(--charcoal)' }}>{item.label}</span>
-              </button>
-            ))}
+          <div className="glass-card">
+            <div className="panel-section-title">Navigation</div>
+            <div className="space-y-0.5">
+              {NAV_ITEMS.map(item => (
+                <button
+                  key={item.label}
+                  onClick={() => setView(item.zone as 'office' | 'ceo' | 'command' | 'knowledge' | 'top')}
+                  className="w-full flex items-center gap-3 p-2 rounded-md text-left transition-colors hover:bg-[var(--accent-soft)]"
+                >
+                  <i className={`fa-solid ${item.icon} text-[12px] w-5 text-center`} style={{ color: 'var(--accent)' }}></i>
+                  <span className="text-[12px] font-medium" style={{ color: 'var(--charcoal)' }}>{item.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
-          <div className="p-3 border-t" style={{ borderColor: 'var(--line)' }}>
-            <div className="text-[10px] font-semibold tracking-widest uppercase mb-2" style={{ color: 'var(--charcoal-3)' }}>Hire Employee</div>
+          <div className="glass-card">
+            <div className="panel-section-title">Hire Employee</div>
             <div className="space-y-1.5">
               {employees.map(([key, item]) => (
                 <button
@@ -80,8 +85,8 @@ export const LeftPanel: FC<LeftPanelProps> = ({
             </div>
           </div>
 
-          <div className="p-3 border-t flex items-center gap-3" style={{ borderColor: 'var(--line)', background: 'var(--surface-2)' }}>
-            <div className="w-10 h-10 rounded-full flex items-center justify-center" style={{ background: 'var(--charcoal)' }}>
+          <div className="glass-card flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: 'var(--charcoal)' }}>
               <i className="fa-solid fa-user-tie text-white"></i>
             </div>
             <div>
@@ -94,51 +99,53 @@ export const LeftPanel: FC<LeftPanelProps> = ({
           </div>
         </>
       ) : (
-        <div className="p-4 flex flex-col h-full overflow-hidden">
-          <button 
-            type="button" 
-            className="btn btn-primary w-full justify-center mb-4"
-            onClick={onExitCustomize}
-          >
-            <i className="fa-solid fa-arrow-left text-[11px]"></i>
-            Exit Customize Mode
-          </button>
-
-          <h3 className="panel-section-title">Furniture & Fixtures</h3>
-          <div className="text-[10px] font-mono mb-3 px-1" style={{ color: 'var(--charcoal-3)' }}>
-            Click item → Click floor to place<br/>
-            Q/E ±15° · R/Shift+R ±45° · Scroll<br/>
-            Click a placed item → rotate · Del removes · Ctrl+Z undoes
+        <>
+          <div className="glass-card">
+            <button
+              type="button"
+              className="btn btn-primary w-full justify-center"
+              onClick={onExitCustomize}
+            >
+              <i className="fa-solid fa-arrow-left text-[11px]"></i>
+              Exit Customize Mode
+            </button>
           </div>
-          
-          <div className="space-y-1.5 mb-5 flex-1 overflow-y-auto scroll-thin pr-1">
-            {furniture.map(([key, item]) => (
-              <button 
-                key={key} 
-                type="button" 
-                className={`item-card w-full ${selectedType === key ? 'active' : ''}`} 
-                onClick={() => onSelectType(selectedType === key ? null : key)}
-              >
-                <div className="item-icon"><i className={`fa-solid ${item.icon}`}></i></div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-[12px] font-semibold" style={{ color: 'var(--charcoal)' }}>{item.name}</div>
-                  <div className="text-[10px] font-mono" style={{ color: 'var(--charcoal-3)' }}>${item.price}</div>
-                </div>
+
+          <div className="glass-card">
+            <h3 className="panel-section-title">Furniture & Fixtures</h3>
+            <div className="text-[10px] font-mono mb-3" style={{ color: 'var(--charcoal-3)' }}>
+              Click item → Click floor to place<br/>
+              Q/E ±15° · R/Shift+R ±45° · Scroll<br/>
+              Click a placed item → rotate · Del removes · Ctrl+Z undoes
+            </div>
+            <div className="space-y-1.5 max-h-[50vh] overflow-y-auto scroll-thin pr-1">
+              {furniture.map(([key, item]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`item-card w-full ${selectedType === key ? 'active' : ''}`}
+                  onClick={() => onSelectType(selectedType === key ? null : key)}
+                >
+                  <div className="item-icon"><i className={`fa-solid ${item.icon}`}></i></div>
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[12px] font-semibold" style={{ color: 'var(--charcoal)' }}>{item.name}</div>
+                    <div className="text-[10px] font-mono" style={{ color: 'var(--charcoal-3)' }}>${item.price}</div>
+                  </div>
+                </button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-1.5 mt-3">
+              <button type="button" className="btn justify-center" onClick={onUndo}>
+                <i className="fa-solid fa-rotate-left text-[10px]"></i>
+                Undo
               </button>
-            ))}
+              <button type="button" className="btn justify-center" onClick={onClear}>
+                <i className="fa-solid fa-eraser text-[10px]"></i>
+                Clear
+              </button>
+            </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-1.5 mt-auto">
-            <button type="button" className="btn justify-center" onClick={onUndo}>
-              <i className="fa-solid fa-rotate-left text-[10px]"></i>
-              Undo
-            </button>
-            <button type="button" className="btn justify-center" onClick={onClear}>
-              <i className="fa-solid fa-eraser text-[10px]"></i>
-              Clear
-            </button>
-          </div>
-        </div>
+        </>
       )}
     </aside>
   );

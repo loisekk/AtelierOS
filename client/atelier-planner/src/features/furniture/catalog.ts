@@ -299,4 +299,62 @@ export const ITEM_CATALOG: Catalog = {
       return g;
     }
   },
+
+  // ── Phase 13 — Cinematic Detail items (emissive-only accent lighting:
+  // NO new PointLights — UnrealBloom (PostFX) makes them glow for free) ──
+  entrance_mat: {
+    name: 'Entrance Mat', icon: 'fa-door-open', price: 140, seats: 0, dim: [3.2, 1.8],
+    factory: () => {
+      const g = new THREE.Group();
+      const c = document.createElement('canvas'); c.width = 512; c.height = 256;
+      const ctx = c.getContext('2d')!;
+      ctx.fillStyle = '#4A2E1F';
+      // rounded rect (roundRect fallback for older browsers)
+      if (typeof ctx.roundRect === 'function') {
+        ctx.beginPath(); ctx.roundRect(8, 8, 496, 240, 26); ctx.fill();
+        ctx.strokeStyle = '#B96D3D'; ctx.lineWidth = 8; ctx.stroke();
+      } else {
+        ctx.fillRect(8, 8, 496, 240);
+        ctx.strokeStyle = '#B96D3D'; ctx.lineWidth = 8; ctx.strokeRect(16, 16, 480, 224);
+      }
+      ctx.font = 'bold 64px Archivo, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = '#F1E7D8'; ctx.fillText('ATELIER', 256, 128);
+      const tex = new THREE.CanvasTexture(c);
+      tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 4;
+      const mat = new THREE.Mesh(
+        new THREE.BoxGeometry(3.2, 0.04, 1.8),
+        new THREE.MeshStandardMaterial({ map: tex, roughness: 0.95 }),
+      );
+      mat.position.y = 0.02; mat.receiveShadow = true; g.add(mat);
+      return g;
+    }
+  },
+  wall_sconce: {
+    name: 'Wall Sconce', icon: 'fa-lightbulb', price: 95, seats: 0, dim: [0.5, 0.3],
+    factory: () => {
+      const g = new THREE.Group();
+      const plate = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.3, 0.04), metalMat); plate.position.set(0, 1.7, 0); g.add(plate);
+      // Emissive warm bar — bloom does the glow, no PointLight cost.
+      const bar = new THREE.Mesh(
+        new THREE.BoxGeometry(0.08, 0.22, 0.1),
+        new THREE.MeshStandardMaterial({ color: 0xFFF4E0, emissive: 0xFFD9A0, emissiveIntensity: 1.6, roughness: 0.4 }),
+      );
+      bar.position.set(0, 1.7, 0.07); g.add(bar);
+      return g;
+    }
+  },
+  path_light: {
+    name: 'Path Light', icon: 'fa-lamp-street', price: 120, seats: 0, dim: [0.3, 0.3],
+    factory: () => {
+      const g = new THREE.Group();
+      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.05, 0.9, 8), metalMat); post.position.y = 0.45; post.castShadow = true; g.add(post);
+      // Emissive cap — glows via PostFX bloom at dusk angles.
+      const cap = new THREE.Mesh(
+        new THREE.SphereGeometry(0.09, 12, 10),
+        new THREE.MeshStandardMaterial({ color: 0xFFF4E0, emissive: 0xFFD9A0, emissiveIntensity: 1.8, roughness: 0.35 }),
+      );
+      cap.position.y = 0.95; g.add(cap);
+      return g;
+    }
+  },
 };

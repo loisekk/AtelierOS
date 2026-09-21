@@ -14,6 +14,8 @@ import type { LayoutPreset } from '../architecture/RoomFurnisher';
 import { buildObjectRegistry, validatePlacedItems, generateRoomStats, exportLayoutToFile } from '../architecture/ObjectRegistry';
 import { ScreenManager } from './ScreenManager';
 import { AgentController } from './AgentController';
+import { PostFX } from './PostFX';
+import { setupSky, setupCampus, type CampusEnvironment } from '../architecture/CampusEnvironment';
 import type { DagStep } from './ScreenManager';
 
 // ── Rotation (Customize Mode): Q/E = ±15° fine, R/Shift+R = ±45° snap, wheel = ±15° ──
@@ -36,6 +38,8 @@ export class AtelierEngine {
   private orthoCamera: THREE.OrthographicCamera;
   private activeCamera: THREE.Camera;
   private renderer: THREE.WebGLRenderer;
+  private postfx!: PostFX;
+  private campus: CampusEnvironment | null = null;
   private controls: OrbitControls;
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
@@ -106,8 +110,7 @@ export class AtelierEngine {
     this.callbacks = callbacks;
 
     this.scene = new THREE.Scene();
-    this.scene.background = new THREE.Color(0x8A644C);
-    this.scene.fog = new THREE.Fog(0x8A644C, 80, 200);
+    setupSky(this.scene); // Phase 13 H2 — warm dusk-gradient sky + matched fog (CampusEnvironment)
 
     this.camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
     this.camera.position.set(30, 24, 30);
@@ -127,6 +130,9 @@ export class AtelierEngine {
     this.renderer.toneMappingExposure = 1.1;
     container.appendChild(this.renderer.domElement);
 
+    // Phase 13 H1 — cinematic post-processing (bloom + tone-mapped output).
+    this.postfx = new PostFX(this.renderer, this.scene, this.camera);
+
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.target.set(0, 0, 0);
@@ -141,7 +147,7 @@ export class AtelierEngine {
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     pmremGenerator.dispose();
 
-    const sunLight = new THREE.DirectionalLight(0xFFF2DE, 2.5);
+    const sunLight = new THREE.DirectionalLight(0xFFE4C0, 2.8); // Phase 13 H4: warmer, softer sun
     sunLight.position.set(30, 50, 20);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(2048, 2048);
@@ -152,7 +158,7 @@ export class AtelierEngine {
     sunLight.shadow.bias = -0.0005;
     this.scene.add(sunLight);
 
-    this.scene.add(new THREE.HemisphereLight(0xFFF6E8, 0x8A644C, 0.55));
+    this.scene.add(new THREE.HemisphereLight(0xC9A97E, 0x6B5A44, 0.6)); // Phase 13 H4: sky/ground match the dusk palette
     this.scene.add(new THREE.AmbientLight(0xF2D0AD, 0.15));
 
     this.brainAccentLight = new THREE.PointLight(0xA95CFF, 5, 20);
@@ -182,6 +188,10 @@ export class AtelierEngine {
     loadBuildingGLB('/models/agent-build-v1.glb').then((building) => {
       this.buildingRoot.add(building);
       this.frameBuilding(building);
+      // Phase 13 H3/I3 — sky-side campus (grass, trees, entrance walkway,
+      // emissive path lights, contact shadow). Needs the loaded building for
+      // its bbox, hence here — right after frameBuilding.
+      this.campus = setupCampus(this.scene, building);
 
       WORLD.floorY = (building.userData.floorY as number) ?? 0;
       this.floor.position.y = WORLD.floorY;
@@ -207,13 +217,10 @@ export class AtelierEngine {
     this.animate();
   }
 
-  /**
-   * Dispose an object subtree. Geometry ALWAYS (fresh per factory call — safe).
-   * Materials ONLY when disposeMaterials=true — catalog furniture shares
-   * module-level materials (oakMat, screenGlowMat…), disposing those would
-   * break every future placement. Per-instance materials (brain, debug
-   * markers, ghost clones) are safe to dispose.
-   */
+  // ════════════════════════════════════════════════════════════════════
+  // Phase 13 — Cinematic Environment now lives in ../architecture/CampusEnvironment.ts
+  // ════════════════════════════════════════════════════════════════════
+
   private disposeObject(root: THREE.Object3D, disposeMaterials = false) {
     root.traverse(c => {
       if (c instanceof THREE.Mesh || c instanceof THREE.Points) {
@@ -1000,10 +1007,13 @@ export class AtelierEngine {
     if (view === 'top') {
       this.activeCamera = this.orthoCamera; this.controls.object = this.orthoCamera;
       this.orthoCamera.position.set(...CAMERA_RIGS.top.pos); this.controls.target.set(...CAMERA_RIGS.top.lookAt);
-      this.orthoCamera.zoom = 1; this.orthoCamera.updateProjectionMatrix(); this.controls.update(); return;
+      this.orthoCamera.zoom = 1; this.orthoCamera.updateProjectionMatrix(); this.controls.update();
+      this.postfx.setCamera(this.orthoCamera); // Phase 13 H1 — ortho top view through the composer
+      return;
     }
 
     this.activeCamera = this.camera; this.controls.object = this.camera;
+    this.postfx.setCamera(this.camera); // Phase 13 H1 — back to perspective
     let pos: THREE.Vector3, lookAt: THREE.Vector3, fov: number;
     if (view === 'ceo') {
       lookAt = this.brainAnchor.clone();
@@ -1139,7 +1149,7 @@ export class AtelierEngine {
     // v4.2.4 — banners re-anchor every frame so they stay pinned to their
     // room's top edge under ANY camera (parallax-compensated ground targets).
     if (this.roomLabelsGroup) updateBannerPlacement(this.roomLabelsGroup, this.activeCamera, WORLD.floorY);
-    this.renderer.render(this.scene, this.activeCamera);
+    this.postfx.render(); // Phase 13 H1 — composer render (bloom + tonemapped output)
   };
 
   public resize() {
@@ -1152,6 +1162,7 @@ export class AtelierEngine {
     this.orthoCamera.top = frustumSize / 2; this.orthoCamera.bottom = -frustumSize / 2;
     this.orthoCamera.updateProjectionMatrix();
     this.renderer.setSize(w, h);
+    this.postfx.resize(w, h); // Phase 13 H1 — keep the composer buffers in sync
   }
 
   public dispose() {
@@ -1171,6 +1182,8 @@ export class AtelierEngine {
     if (this.egressGroup) { this.disposeObject(this.egressGroup, true); this.scene.remove(this.egressGroup); this.egressGroup = null; this.egressArrows = []; }
 
     this.controls.dispose();
+    this.postfx.dispose(); // Phase 13 H1 — release composer render targets
+    if (this.campus) { this.campus.dispose(); this.campus = null; } // campus owns its subtree — out before the generic traverse
     this.scene.traverse(obj => {
       if (obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Sprite) {
         obj.geometry?.dispose();

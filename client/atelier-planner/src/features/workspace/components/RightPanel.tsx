@@ -25,7 +25,7 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
 
   if (mode === 'main') {
     return (
-      <aside className="panel" style={{ width: 300, display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--line)', background: 'var(--surface)' }}>
+      <aside className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflowY: 'auto' }}>
         <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
           <div className="panel-title"><span>Company Status</span></div>
           <div className="space-y-0.5">
@@ -46,7 +46,7 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
               <div>
                 <div className="text-[10px] uppercase" style={{ color: 'var(--charcoal-3)' }}>Name</div>
                 <div className="text-[14px] font-semibold" style={{ color: 'var(--charcoal)' }}>{selectedEmployee.config?.name || selectedEmployee.name}</div>
-              </div>h
+              </div>
               <div>
                 <div className="text-[10px] uppercase" style={{ color: 'var(--charcoal-3)' }}>Role</div>
                 <div className="text-[13px] font-mono" style={{ color: 'var(--charcoal)' }}>{selectedEmployee.role}</div>
@@ -109,7 +109,7 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
   }
 
   return (
-    <aside className="panel" style={{ display: 'flex', flexDirection: 'column', borderLeft: '1px solid var(--line)', background: 'var(--surface)' }}>
+    <aside className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflowY: 'auto' }}>
       <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
         <div className="panel-title"><span>Capacity Planner</span></div>
         <div className="mb-3">

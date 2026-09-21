@@ -251,6 +251,46 @@
       design in activeContext.md).
 - [ ] Phase 13: real CLI adapters (Bun.spawn opencode/claude).
 - [ ] Phase 14: navmesh pathfinding (@recast-navigation/three).
+- [x] Phase 13 G (fix) + H/I (apply) — GLASS UI SHELL + CINEMATIC ENVIRONMENT
+      (user request; gates tsc -b 0 · eslint 0):
+      · User screenshot showed the shell broken: left panel stretched across
+        ~85% of the window, right panel squeezed at the edge, canvas crushed.
+        Root cause: the Phase 13 G rewrite gave LeftPanel a width:100% aside
+        and TopBar an absolute .topbar-glass, but App.tsx still used the OLD
+        flex-column/flex-row shell — component/CSS contract mismatch.
+      · App.tsx → full-bleed glass shell: .workspace-full root, canvas
+        container as .stage-full (edge-to-edge behind everything), LeftPanel
+        wrapped in .floating-left, RightPanel in .floating-right, HUD chips
+        in .stage-hud-layer. TopBar/LeftPanel unchanged (already glass).
+      · RightPanel: both roots glassified (.glass-card column, old .panel +
+        borderLeft + opaque background dropped); fixed stray "</div>h" typo.
+      · index.css: RESTORED .hud-tl/tr/bl/bc anchor rules (the glass-theme
+        edit had deleted them — chips stacked in the stage corner) and added
+        .stage-full > canvas absolute-inset rule (old .stage contract).
+      · Phase H1/H2/H3/H4 (bloom PostFX, dusk sky, campus, warm sun) was
+        already inline in AtelierEngine from the parallel session — kept and
+        EXTRACTED into new architecture/CampusEnvironment.ts (setupSky +
+        setupCampus(scene, building), self-disposing) with the MISSING I3
+        pieces added: entrance walkway (stone tiles, +X toward the gate) and
+        10 emissive path lights (bloom-glow, zero PointLights). Engine now
+        calls setupSky in the constructor and setupCampus in the GLB .then()
+        (needs the building bbox); makeSkyTexture/buildCampus deleted;
+        campus disposed explicitly before the generic scene traverse.
+      · MaterialTheme v3 — the plan's two discoveries applied: (1) the
+        building is ONE merged tripo mesh, so per-mesh classify always fell
+        to flat tan → VERTEX-COLOR BAKING (paintMergedMesh classifies every
+        vertex by world normal + height: oak floor / cream walls / walnut
+        wainscot / soffit / ceiling) onto a shared vertexColors 'painted'
+        material; (2) the brain-chamber darkening Pass-0 name-regex was dead
+        code → now ZONE-BASED (ROOM_ZONES 'brain_chamber' rect) and applied
+        in the vertex paint (dusk-violet lerp 0.72, y < 4.2).
+      · Tree foliage: per-instance leaf tints added; base leaf material set
+        to white (material.color multiplies instanceColor).
+      · NOT staged: .gitignore (unrelated edit ignoring memory-bank/ +
+        .verify/ — conflicts with the log discipline; left uncommitted).
+      · Gates: tsc -b exit 0 · eslint 0/0. Visual verification (bun run dev:
+        glass panels over full-bleed stage, dusk campus, walkway + path
+        lights, vertex-painted walls, violet brain rotunda) PENDING user.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

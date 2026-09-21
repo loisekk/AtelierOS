@@ -332,7 +332,11 @@ function App() {
   }, {});
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--bg)' }}>
+    // Phase 13 G — full-bleed glass shell: the 3D office runs edge-to-edge,
+    // glass panels + HUD float above it. (The old flex-column shell crushed
+    // the stage and stretched the panels to the full window.)
+    <div className="workspace-full">
+      <div ref={containerRef} className="blueprint-grid stage-full" />
       <TopBar
         view={view} setView={handleView} brandColor={brandColor} setBrandColor={handleBrand}
         toggleFire={handleToggleFire} fireActive={fireActive}
@@ -342,7 +346,7 @@ function App() {
         labelsVisible={labelsVisible} toggleLabels={toggleLabels}
       />
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="floating-left">
         <LeftPanel
           mode={isCustomizing ? 'settings' : 'main'}
           selectedType={selectedType}
@@ -354,10 +358,9 @@ function App() {
           onHireClick={handleHireClick}
           setView={(v) => handleView(v)}
         />
+      </div>
 
-        <main className="flex-1 relative">
-          <div ref={containerRef} className="blueprint-grid" style={{ position: 'absolute', inset: 0 }} />
-
+        <div className="stage-hud-layer">
           <div className="hud hud-tr">
             <div className="flex items-center gap-4 text-[10.5px]">
               <div className="flex items-center gap-1.5">
@@ -410,8 +413,9 @@ function App() {
             engineRef={engineRef}
             onUndo={handleUndo}
           />
-        </main>
+        </div>
 
+      <div className="floating-right">
         <RightPanel 
           mode={isCustomizing ? 'settings' : 'main'} 
           placedItems={placedItems} 
