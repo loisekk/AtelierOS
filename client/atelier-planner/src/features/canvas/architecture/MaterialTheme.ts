@@ -16,7 +16,7 @@ export const AtelierWarmMaterials = {
   chair:     M(0x403A36, 0.85, 0.05),
   fabric:    M(0x53443D, 0.95),
   metal:     M(0x413730, 0.35, 0.80, { envMapIntensity: 0.9 }),
-  glass:     new THREE.MeshPhysicalMaterial({ color: 0xD8DED8, transmission: 0.85, transparent: true, opacity: 0.35, roughness: 0.12, ior: 1.5, envMapIntensity: 0.8, side: THREE.DoubleSide }),
+  glass:     new THREE.MeshPhysicalMaterial({ color: 0xD8DED8, transmission: 0.85, transparent: true, opacity: 0.55, roughness: 0.12, ior: 1.5, envMapIntensity: 0.45, side: THREE.DoubleSide }),
   screen:    M(0x07131A, 0.25, 0.40, { emissive: 0x5FE7F2, emissiveIntensity: 0.95, envMapIntensity: 0.6 }),
   brain:     M(0x7F5BB2, 0.30, 0.40, { emissive: 0xA75FFF, emissiveIntensity: 1.4, envMapIntensity: 0.7 }),
   plant:     M(0x3F744A, 0.90),

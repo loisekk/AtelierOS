@@ -385,6 +385,49 @@
       · Gates: tsc -b 0 · eslint 0. Verify in order: (1) walls matte cream,
         only emissives glow; (2) no washout at any orbit angle, img-2 haze
         gone; (3) 270° arc feels free, Top + CEO views still land.
+- [x] Phase 13 fixes round 4 — ENV-REFLECTION SHINE · PANEL DIAL 0.88 ·
+      VOICE + BRAIN CARDS · CITY PATH B (user plan; gates tsc -b 0 ·
+      eslint 0):
+      · Shine v3 diagnosis accepted: LEFT-facade-only shine = specular env
+        reflection (view-dependent), not sun. Verified the v2 numbers DID
+        land (exposure 1.25 / sun 1.7 / bloom 0.22-0.55-1.0 — grep check)
+        before touching anything. Knobs: environmentIntensity 0.7→0.5;
+        glass envMapIntensity 0.8→0.45, opacity 0.35→0.55 (denser glass
+        reads less mirror-like). Escalation ladder noted: if the left
+        facade STILL glows → it's sun grazing → threshold 1.0→1.15
+        (screens stop blooming, brain/sconces/path lights at 1.4–2.2 keep
+        glowing — acceptable trade).
+      · Panel dial: user has steered transparent→solid→"as they were" —
+        made it ONE owned number: --glass-bg 0.97→0.88 (balanced: solid
+        content, soft 3D bleed), --glass-blur 6→10. No more structural
+        rewrites; future tweaks = that single alpha.
+      · Right-panel cards restored (img 4 target) — the plumbing existed:
+        (1) VOICE COMMAND card — mic button wired to toggleListening,
+        status line, <canvas> waveform fed by useVoice.getAudioData()
+        (rAF bar visualizer, cyan #49D8EC on dark pill, flat baseline
+        while idle, live frequency bars while listening); (2) AI BRAIN
+        RESPONSE card — App.tsx now keeps brainResponses state (pushed in
+        the cognitive_step handler as
+        "[hh:mm] [role] message", newest first, capped 8, timestamped
+        monospace; empty state "Brain idle. Dispatch a task."). Both as
+        .glass-card blocks with .panel-section-title, slotted between
+        Employee Workstation and Live Activity. This card is the landing
+        pad for voice-to-agents (next queue item).
+      · City Path B (visibility): cylinder material fog:true→false (it was
+        ~75% fog-washed at r150 — why rotation revealed "empty" sky),
+        haze baked INTO the texture instead (warm horizon gradient wash,
+        0→0.45 alpha over the top 180px of the building zone), skyline
+        density doubled (gaps 6+rng·26 → 2+rng·10). Reads crisply at
+        every orbit angle. Path A (real equirect panorama as
+        scene.background — correct mechanism, industry standard, rotates
+        with the camera) stays queued: generate
+        public/textures/city-panorama.jpg, 5-min texture swap; keep the
+        PMREM RoomEnvironment env probe (or envIntensity 0.5) so bright
+        panorama windows don't re-introduce shine.
+      · Gates: tsc -b 0 · eslint 0. Pending user visual: left facade
+        matte; panels balanced (0.88); Voice/Brain cards present and
+        waveform moves while listening; city skyline visible at every
+        angle.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

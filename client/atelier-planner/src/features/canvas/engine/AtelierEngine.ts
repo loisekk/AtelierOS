@@ -158,7 +158,7 @@ export class AtelierEngine {
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     pmremGenerator.dispose();
-    this.scene.environmentIntensity = 0.7; // over-bloom fix (knob c) — scale the env probe scene-wide
+    this.scene.environmentIntensity = 0.5; // left-facade shine fix: the glass was mirror-reflecting the bright equirect horizon band (was 0.7)
 
     const sunLight = new THREE.DirectionalLight(0xFFE4C0, 1.7); // energy fix — was 2.8: the sun linearly OUT-SHINED the 0.95 emissives, so no bloom threshold could separate them
     sunLight.position.set(30, 50, 20);

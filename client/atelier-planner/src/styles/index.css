@@ -31,10 +31,10 @@
      edges, and transparency there read as unfinished, not premium). The
      TopBar chips KEEP the light frost via their own tokens (--chip-bg /
      --chip-blur) since they sit over the 3D scene and look right. */
-  --glass-bg: rgba(241, 231, 216, 0.97);
+  --glass-bg: rgba(241, 231, 216, 0.88);  /* "as they were" — solid content, soft 3D bleed. ONE dial: tune this alpha only. */
   --glass-bg-soft: rgba(241, 231, 216, 0.94);
   --glass-border: rgba(120, 90, 60, 0.22);
-  --glass-blur: 6px;
+  --glass-blur: 10px;
   --chip-bg: rgba(244, 236, 224, 0.55);
   --chip-blur: 14px;
   --block-radius: 14px;

@@ -62,6 +62,7 @@ function App() {
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [logs, setLogs] = useState<Record<string, string[]>>({});
+  const [brainResponses, setBrainResponses] = useState<string[]>([]); // AI Brain Response card (img 4) — newest first, capped at 8
 
   const [approvalData, setApprovalData] = useState<{ taskId: string; command: string; subTaskId: string } | null>(null);
 
@@ -97,6 +98,12 @@ function App() {
       showToast(`⚠️ Approval Required for destructive command!`);
     } else if (msg.type === 'cognitive_step') {
       const logMessage = `[${msg.role || 'CEO Brain'}] ${msg.message} (${msg.status})`;
+
+      // Surface the step on the AI Brain Response card (newest first, cap 8)
+      setBrainResponses(prev => [
+        `[${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}] [${msg.role || 'CEO Brain'}] ${msg.message}`,
+        ...prev,
+      ].slice(0, 8));
 
       const newSteps = [...dagStepsRef.current];
       const existing = newSteps.findIndex(s => s.role === (msg.role || 'Decompose'));
@@ -166,7 +173,7 @@ function App() {
     }
   }, [placedItems, handleDispatch, showToast]);
 
-  const { isListening, startListening, stopListening } = useVoice(handleTranscript);
+  const { isListening, startListening, stopListening, getAudioData } = useVoice(handleTranscript);
 
   const toggleListening = () => {
     if (isListening) stopListening();
@@ -429,6 +436,10 @@ function App() {
             if (dest === 'desk') engineRef.current?.returnAgentToDesk(id);
             else engineRef.current?.walkAgentTo(id, dest);
           }}
+          brainResponses={brainResponses}
+          isListening={isListening}
+          toggleListening={toggleListening}
+          getAudioData={getAudioData}
           tasks={tasks}
         />
       </div>

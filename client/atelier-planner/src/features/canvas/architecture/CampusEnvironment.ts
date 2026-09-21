@@ -56,8 +56,15 @@ function makeCityStripTexture(): THREE.CanvasTexture {
         }
       }
     }
-    x += w + 6 + rng() * 26;
+    x += w + 2 + rng() * 10; // dense skyline — tighter gaps (Path B visibility)
   }
+  // Baked distance haze (replaces scene fog on the strip): warm horizon
+  // wash, dense at the building line, fading up toward the sky band.
+  const haze = ctx.createLinearGradient(0, H, 0, H - 180);
+  haze.addColorStop(0, 'rgba(217, 160, 107, 0)');
+  haze.addColorStop(1, 'rgba(217, 160, 107, 0.45)');
+  ctx.fillStyle = haze;
+  ctx.fillRect(0, H - 180, W, 180);
   const tex = new THREE.CanvasTexture(c);
   tex.colorSpace = THREE.SRGBColorSpace;
   return tex;
@@ -162,16 +169,17 @@ export function setupCampus(scene: THREE.Scene, building: THREE.Object3D): Campu
   trunks.count = leavesLow.count = leavesTop.count = placed;
   [trunks, leavesLow, leavesTop].forEach(mesh => { track(mesh); disposables.push(mesh); });
 
-  // ── City backdrop (user issue 3, Option A): seamless dusk skyline on an
-  // open cylinder INSIDE the fog range — it parallaxes with the camera
-  // because it lives in the scene (a flat scene.background image would not).
-  // Procedural canvas → wrap-safe by construction; ~75% fog haze at this
-  // radius softens it into the distance exactly like the plan wants.
+  // ── City backdrop (Option A): seamless dusk skyline on an open cylinder —
+  // it parallaxes with the camera because it lives in the scene. Path B
+  // (interim): fog disabled, distance haze baked INTO the texture — the city
+  // reads crisply at every orbit angle instead of dissolving at r150.
+  // Path A (later): swap in a real equirect panorama as scene.background
+  // (industry standard, rotates with the camera) — texture swap only.
   const cityTex = makeCityStripTexture();
   disposables.push(cityTex);
   const city = new THREE.Mesh(
     new THREE.CylinderGeometry(150, 150, 120, 64, 1, true),
-    new THREE.MeshBasicMaterial({ map: cityTex, side: THREE.BackSide, fog: true }),
+    new THREE.MeshBasicMaterial({ map: cityTex, side: THREE.BackSide, fog: false }),
   );
   city.position.y = 58; // strip spans y −2…118 — building bases sit at ground level
   track(city);

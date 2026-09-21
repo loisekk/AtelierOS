@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import type { FC } from 'react';
 import type { PlacedItemMeta, AgentStatus , Task } from '../../ai-agents/types';
 
@@ -11,10 +12,50 @@ interface RightPanelProps {
   onStatusChange: (id: string, status: AgentStatus) => void;
   onConfigure: (id: string) => void;
   onWalkTo: (id: string, destination: string) => void;
+  brainResponses: string[];
+  isListening: boolean;
+  toggleListening: () => void;
+  getAudioData: () => Uint8Array | null;
   tasks: Task[];
 }
 
-export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId, maxCapacity, roomArea, openCost, onStatusChange, onConfigure, onWalkTo, tasks }) => {
+/** Voice Command waveform — bar visualizer fed by useVoice's getAudioData().
+ *  Flat baseline while idle; live frequency bars (cyan) while listening. */
+const VoiceWave: FC<{ isListening: boolean; getAudioData: () => Uint8Array | null }> = ({ isListening, getAudioData }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const rafRef = useRef<number>(0);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const draw = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const data = isListening ? getAudioData() : null;
+      const bars = 24;
+      const bw = canvas.width / bars;
+      for (let i = 0; i < bars; i++) {
+        const level = data ? (data[i * 2] ?? 0) / 255 : 0.06;
+        const h = Math.max(2, level * (canvas.height - 4));
+        ctx.fillStyle = '#49D8EC';
+        ctx.globalAlpha = isListening ? 0.9 : 0.3;
+        ctx.fillRect(i * bw + 2, (canvas.height - h) / 2, bw - 4, h);
+      }
+      ctx.globalAlpha = 1;
+      rafRef.current = requestAnimationFrame(draw);
+    };
+    draw();
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [isListening, getAudioData]);
+
+  return (
+    <div className="rounded-lg p-2" style={{ background: '#0E1418' }}>
+      <canvas ref={canvasRef} width={268} height={40} style={{ width: '100%', display: 'block' }} />
+    </div>
+  );
+};
+
+export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId, maxCapacity, roomArea, openCost, onStatusChange, onConfigure, onWalkTo, brainResponses, isListening, toggleListening, getAudioData, tasks }) => {
   const seats = placedItems.reduce((s, i) => s + i.seats, 0);
   const total = placedItems.reduce((s, i) => s + i.price, 0);
   const pct = maxCapacity > 0 ? Math.min(100, Math.round((seats / maxCapacity) * 100)) : 0;
@@ -81,6 +122,37 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
                   <button className="btn justify-center text-[10px]" onClick={() => onStatusChange(selectedEmployee.id, 'error')}>Error</button>
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+
+        <div className="glass-card">
+          <div className="panel-section-title">Voice Command</div>
+          <div className="flex items-center gap-2 mb-2">
+            <button
+              className={`btn ${isListening ? 'active' : ''}`}
+              style={isListening ? { background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' } : undefined}
+              onClick={toggleListening}
+            >
+              <i className={`fa-solid ${isListening ? 'fa-wave-square' : 'fa-microphone'} text-[11px]`}></i>
+              <span>{isListening ? 'Listening…' : 'Speak'}</span>
+            </button>
+            <span className="text-[10px] font-mono truncate" style={{ color: 'var(--charcoal-3)' }}>
+              {isListening ? 'Say something to your AI team' : 'Tap to talk'}
+            </span>
+          </div>
+          <VoiceWave isListening={isListening} getAudioData={getAudioData} />
+        </div>
+
+        <div className="glass-card">
+          <div className="panel-section-title">AI Brain Response</div>
+          {brainResponses.length === 0 ? (
+            <div className="text-[11px] text-center py-3" style={{ color: 'var(--charcoal-3)' }}>Brain idle. Dispatch a task.</div>
+          ) : (
+            <div className="space-y-1.5 max-h-40 overflow-y-auto scroll-thin">
+              {brainResponses.map((line, i) => (
+                <div key={i} className="text-[10px] font-mono leading-relaxed" style={{ color: 'var(--charcoal-2)' }}>{line}</div>
+              ))}
             </div>
           )}
         </div>
