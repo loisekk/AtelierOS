@@ -29,13 +29,14 @@ const toDeg = (v: number): number => Math.round((normRot(v) * 180) / Math.PI);
  *  under the ground plane, front 138° presentation arc. Special rigs (ortho
  *  Top view, CEO close-up) relax these in setView(). */
 const ORBIT_LIMITS = {
-  minDistance: 18,                    // can't zoom inside the building
+  minDistance: 14,                    // more zoom-in room (was 18)
   maxDistance: 95,                    // stays on the campus, not the horizon
-  minPolarAngle: 0.18,                // near-top-down belongs to the Top view
+  minPolarAngle: 0.12,                // a bit more top-down freedom (was 0.18)
   maxPolarAngle: Math.PI / 2 - 0.12,  // never below the ground
-  minAzimuthAngle: -Math.PI / 2.6,    // ≈ ±69° — front presentation arc
-  maxAzimuthAngle: Math.PI / 2.6,
-} as const;
+  minAzimuthAngle: -2.35,             // ±135° → a 270° viewing arc (the
+  maxAzimuthAngle: 2.35,              // procedural city wraps 360°, so the
+}; // tight front-only arc's justification is gone. If it still feels boxed
+   // in: delete both azimuth lines — full 360° is now visually safe.
 
 interface EngineCallbacks {
   onStatsUpdate: (items: PlacedItemMeta[]) => void;
@@ -140,7 +141,7 @@ export class AtelierEngine {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 1.1;
+    this.renderer.toneMappingExposure = 1.25; // energy fix: compensate the dimmer sun in post (was 1.1)
     container.appendChild(this.renderer.domElement);
 
     // Phase 13 H1 — cinematic post-processing (bloom + tone-mapped output).
@@ -159,7 +160,7 @@ export class AtelierEngine {
     pmremGenerator.dispose();
     this.scene.environmentIntensity = 0.7; // over-bloom fix (knob c) — scale the env probe scene-wide
 
-    const sunLight = new THREE.DirectionalLight(0xFFE4C0, 2.8); // Phase 13 H4: warmer, softer sun
+    const sunLight = new THREE.DirectionalLight(0xFFE4C0, 1.7); // energy fix — was 2.8: the sun linearly OUT-SHINED the 0.95 emissives, so no bloom threshold could separate them
     sunLight.position.set(30, 50, 20);
     sunLight.castShadow = true;
     sunLight.shadow.mapSize.set(2048, 2048);
@@ -170,7 +171,7 @@ export class AtelierEngine {
     sunLight.shadow.bias = -0.0005;
     this.scene.add(sunLight);
 
-    this.scene.add(new THREE.HemisphereLight(0xC9A97E, 0x6B5A44, 0.6)); // Phase 13 H4: sky/ground match the dusk palette
+    this.scene.add(new THREE.HemisphereLight(0xC9A97E, 0x6B5A44, 0.45)); // energy fix: was 0.6
     this.scene.add(new THREE.AmbientLight(0xF2D0AD, 0.15));
 
     this.brainAccentLight = new THREE.PointLight(0xA95CFF, 5, 20);

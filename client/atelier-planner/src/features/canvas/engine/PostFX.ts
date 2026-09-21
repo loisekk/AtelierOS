@@ -14,9 +14,12 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
  * intermediate render targets stay linear-HDR and the bloom math is
  * physically correct.)
  *
- * Only true emissives bloom (threshold 0.92): agent screens, the CEO
+ * Only true emissives bloom (threshold 1.0): agent screens, the CEO
  * brain core, pendant bulbs, DAG projectors, new accent lighting.
- * Strength 0.32 = premium soft glow, not sci-fi bloom.
+ * Scene-energy contract: sunlit diffuse surfaces are kept BELOW 1.0 linear
+ * (sun 1.7 + hemisphere 0.45 + exposure 1.25) so threshold 1.0 can never
+ * catch a wall — the walls are matte because the ENERGY is matte, not the
+ * bloom config. Strength 0.22 = subtle glow, not sci-fi bloom.
  * Half-resolution bloom mips internally = negligible GPU cost.
  */
 export class PostFX {
@@ -29,9 +32,9 @@ export class PostFX {
 
     this.bloom = new UnrealBloomPass(
       new THREE.Vector2(renderer.domElement.width, renderer.domElement.height),
-      0.32,  // strength — subtle premium glow
-      0.65,  // radius — wide soft falloff
-      0.92,  // threshold — only true emissives bloom (screens ≥0.95, brain 1.4, sconces 2.0+)
+      0.22,  // strength — subtle glow (lowered with the scene-energy fix)
+      0.55,  // radius — tighter falloff (kills the hazy/blurry wash)
+      1.0,   // threshold — sunlit walls now sit BELOW 1.0 linear; only HDR emissive peaks cross
     );
     this.composer.addPass(this.bloom);
 

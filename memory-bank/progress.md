@@ -358,6 +358,33 @@
         emissives; panels ceramic-solid vs img 2; orbit clamped to the front
         arc with Top view + CEO view still working; city haze visible behind
         the trees at the default angle.
+- [x] Phase 13 shine fix v2 — SCENE-ENERGY REBALANCE + WIDER ORBIT ARC
+      (user plan; gates tsc -b 0 · eslint 0):
+      · User verdict: still shines after the threshold/env knobs → real root
+        cause is LIGHT ENERGY, not bloom config. The math: sunlit cream wall
+        (albedo ~0.75 linear × sun 2.8 + hemisphere) ≈ 1.3–1.8 linear, while
+        the screens' emissive ≈ 0.65 — the walls were 2× brighter than the
+        things we WANT to glow, so no threshold could ever separate them.
+      · Energy fix (game-industry pattern: diffuse below ~1.0 linear,
+        normalize in post): sun 2.8→1.7, hemisphere 0.6→0.45, fog near
+        60→95 (building no longer hazed on zoom-out), toneMappingExposure
+        1.1→1.25 (perceived brightness compensated in post — never re-raise
+        the sun; if dim, exposure→1.35).
+      · Bloom retune: strength 0.32→0.22, radius 0.65→0.55 (also kills the
+        img-2 haze/blur), threshold 0.92→1.0 (only true HDR peaks cross —
+        brain 1.4 / sconces 2.0 / path lights 2.2 tower over walls ≈0.9).
+        Last-resort ladder if walls still catch at grazing sun: threshold
+        1.0→1.1 (ceiling of useful values); beyond that, screenshot the
+        exact angle → env probe (environmentIntensity 0.7→0.5) or glass.
+      · Orbit arc widened ~3× (justification for the tight front arc died
+        with the wrap-safe procedural city): minDistance 18→14, minPolar
+        0.18→0.12, azimuth ±π/2.6 (±69°)→±2.35 (±135° = 270° arc). Noted in
+        ORBIT_LIMITS: delete both azimuth lines for full 360° if it still
+        feels boxed in (now visually safe). relaxOrbitLimits() / CEO
+        minDistance-override structure unchanged and unaffected.
+      · Gates: tsc -b 0 · eslint 0. Verify in order: (1) walls matte cream,
+        only emissives glow; (2) no washout at any orbit angle, img-2 haze
+        gone; (3) 270° arc feels free, Top + CEO views still land.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

@@ -81,7 +81,7 @@ export function setupSky(scene: THREE.Scene): void {
   });
   sky.mapping = THREE.EquirectangularReflectionMapping; // 360° backdrop, not a flat card
   scene.background = sky;
-  scene.fog = new THREE.Fog(0xD9A06B, 60, 180);
+  scene.fog = new THREE.Fog(0xD9A06B, 95, 190); // energy fix: near pushed past the building (was 60) — no more haze wash on zoom-out
 }
 
 /**
