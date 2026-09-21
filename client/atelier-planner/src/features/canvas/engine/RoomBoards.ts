@@ -50,10 +50,20 @@ export class RoomBoards {
    * resolving to the same neighbor room and rendering identical content —
    * e.g. the two mid-spine boards both showed MEETING ROOM. Probe 2.2m along
    * the facing direction; fall back to the anchor's own zone.
+   *
+   * v4.2.8 — RECEPTION IS THE GATE, NOT A ROOM: the gate owns no screens, so a
+   * facing-probe that drifts into the gate rect (e.g. the meeting room's east
+   * board) must NEVER hijack the board into rendering RECEPTION — fall back to
+   * the zone the screen itself stands in. A screen only ever shows RECEPTION
+   * if it physically stands in the gate with no other room possible.
    */
   static zoneIdForScreen(x: number, z: number, rot = 0): string | null {
     const fx = Math.sin(rot), fz = Math.cos(rot); // plane normal (+z) rotated by rotY
-    return RoomBoards.zoneIdAt(x + fx * 2.2, z + fz * 2.2) ?? RoomBoards.zoneIdAt(x, z);
+    const probed = RoomBoards.zoneIdAt(x + fx * 2.2, z + fz * 2.2);
+    const own = RoomBoards.zoneIdAt(x, z);
+    if (probed && probed !== 'reception') return probed;
+    if (own && own !== 'reception') return own;
+    return probed ?? own;
   }
 
   /** Route an agent's log line into its room buffer. */

@@ -3,10 +3,14 @@ import { ROOM_ZONES } from './SpatialConfig';
 import type { RoomId } from './SpatialConfig';
 
 /**
- * Room banners v4.2.5 — content: ROOM_BANNERS · placement: ROOM_ANCHORS
- * (measured furniture centroids — SINGLE SOURCE OF TRUTH, see below).
- * The old hand-tuned ROOM_LABELS drifted from the real rooms; the v4.2.4
- * rect-derived targets drifted again (up to 6.4 m vs the furniture dump).
+ * Room banners v4.4 — content: ROOM_BANNERS · placement: ROOM_ANCHORS.
+ * v4.4 IN-ROOM placement (reference img 2/img 3): each banner sits ~4.5–5
+ * units INSIDE its room's rear (minX) wall at a LOW hover. The default
+ * office rig (elev ≈ 31°) projects hover ≈ 0.86× up-screen but room depth
+ * only ≈ 0.52× down-screen, so the v4.3 rear-edge + hover-4.2 anchors
+ * floated OUTSIDE the building (home/showcase) or into the rotunda
+ * (command hub). Brain chamber keeps its measured rotunda override
+ * (a zone-derived anchor there would sit inside the wall).
  * Style: transparent dark-glass pill matching the reference render.
  */
 export const ROOM_BANNERS: Record<RoomId, { text: string; sub: string; accent: string }> = {
@@ -27,7 +31,7 @@ export function roomBannerFor(zoneId: string): { text: string; sub: string; acce
   return (ROOM_BANNERS as Record<string, { text: string; sub: string; accent: string }>)[zoneId] ?? null;
 }
 
-const BANNER_HOVER = 4.2;   // hover height above the dollhouse walls (world units over floorY)
+const BANNER_HOVER = 2.8;   // low in-room hover (img 3 look) — the high office rig still clears every interior wall
 const BANNER_W = 5.2;       // sprite world width (height keeps the canvas aspect)
 
 // v4.2.6 — close-orbit fade. The building is an open-top diorama with
@@ -77,11 +81,12 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
 }
 
 /**
- * v4.2.7 — STATIC centroid banners (user decision) · v4.2.6 close-orbit fade.
- *   · GROUND TARGET — the point the banner sits over: the validateLayout
- *     furniture centroid (ROOM_ANCHORS = SINGLE SOURCE OF TRUTH). The v4.2.4
- *     rect-derived targets drifted up to 6.4 m (reception 5.75, home 6.38,
- *     showcase 5.86); v4.2.5 fixed the targets, this fixes the MOTION.
+ * v4.2.7 — STATIC placement (user decision) · v4.2.6 close-orbit fade ·
+ * v4.3 start-of-room anchors.
+ *   · GROUND TARGET — the point the banner sits over: the room's start
+ *     (rear/minX) edge, z-centered (see ROOM_ANCHORS v4.3 note below). The
+ *     earlier furniture-centroid and rect-derived targets sat at the middle
+ *     of each room; the reference look pins every banner at the top edge.
  *   · BANNERS NEVER MOVE WITH THE CAMERA. v4.2.4's per-frame parallax
  *     compensation slid each sprite toward the camera (capped at 13 units)
  *     so all ten banners visibly swooped toward the viewer while orbiting —
@@ -97,17 +102,25 @@ function createLabelTexture(text: string, subtext: string, accent: string): THRE
  *     stays north of the brain, clear of the 14-unit ring.
  */
 export const ROOM_ANCHORS: Record<RoomId, { x: number; z: number; hover?: number }> = {
-  // validateLayout furniture centroids (v4 dump) — banner ground targets
-  home_workspace: { x: -14.4, z: 12.9 },
+  // v4.4 — IN-ROOM placement (reference img 2/img 3): every banner sits just
+  // INSIDE its room's top (screen-up = −X) edge, horizontally centered, at a
+  // LOW hover (2.8). Inset from the rear wall: rear band 5.0, middle/front
+  // bands 4.5; z = zone center. v4.3's rear-edge + hover-4.2 anchors
+  // projected above the outer walls on the default office rig (elev ≈ 31°:
+  // hover shifts up-screen 0.86/unit, room depth only 0.52/unit).
+  home_workspace: { x: -17.5, z: 12.2 },
   brain_chamber:  { x: -16.0, z: -0.3, hover: 4.8 }, // measured rotunda west rim — see note above
-  showcase:       { x: -14.9, z: -11.9 },
-  agent_space:    { x: -4.7,  z: 12.3 },
-  command_hub:    { x: -0.4,  z: -1.9 },
-  office_floor:   { x: -6.6,  z: -11.8 },
-  knowledge_hub:  { x: 5.7,   z: 12.2 },
-  meeting_room:   { x: 6.2,   z: 1.9 },
-  ai_club:        { x: 6.1,   z: -12.2 },
-  reception:      { x: 18.5,  z: 0 },
+  showcase:       { x: -17.5, z: -12.2 },
+  agent_space:    { x: -5.5,  z: 12.2 },
+  command_hub:    { x: -5.5,  z: 0 },
+  office_floor:   { x: -5.5,  z: -12.2 },
+  // v4.2.8 — front row zones v1.3: Knowledge Hub = front-left corner room,
+  // AI Club Lounge = front-right corner room, Meeting Room = middle front,
+  // Reception = the gate ONLY. Banners just inside each room's rear wall.
+  knowledge_hub:  { x: 5.5,   z: 12.2 },
+  meeting_room:   { x: 5.5,   z: 0 },
+  ai_club:        { x: 5.5,   z: -12.2 },
+  reception:      { x: 18.5,  z: 0 }, // gate foyer arch, per img 2
 };
 
 interface BannerGround { x: number; z: number; hover: number }

@@ -217,6 +217,34 @@
         over each room, compact pills, full opacity = the v4.2.5 centroid
         look with static placement.
       · Gates: bun run typecheck 0 · bun run lint 0.
+- [x] v4.2.8 + zones v1.3 + banners v4.4 — REFERENCE-PLAN ROOM IDENTITY
+      (user goal; gates typecheck 0):
+      · User: "the display is rendering the reception, which is wrong" — the
+        middle front room must be MEETING ROOM; Reception = the GATE ONLY
+        (no room, no screens). Knowledge Hub = front-left corner room,
+        AI Club = front-right corner room (reference 2D floor plan).
+      · ROOM_ZONES v1.3: front rooms span their FULL building extent
+        (knowledge/ai_club maxX 11→22.5; meeting_room capped 15). v1.2's
+        cap left the corner wings outside every zone → boards fell through
+        to the nearest-zone fallback and the meeting room's east board
+        probed into the reception rect → RECEPTION board in the middle
+        front room. knowledge camera rig recentered on the corner wing.
+      · RoomBoards v4.2.8: zoneIdForScreen NEVER returns 'reception' via
+        facing-probe — a drifting probe falls back to the zone the screen
+        stands in. A screen shows RECEPTION only if it physically stands
+        in the gate.
+      · ROOM_BANNERS unchanged content-wise; roomBannerFor already keys
+        the board headers, so middle-front board now reads MEETING ROOM.
+      · roomLabels v4.4: banners re-anchored IN-ROOM — just inside each
+        room's rear (minX) wall, z-centered, hover 2.8 (brain keeps its
+        measured rotunda rim override −16.0, −0.3, hover 4.8). v4.3's
+        rear-edge + hover 4.2 projected above the outer walls on the
+        default office rig (elev ≈ 31°); low in-room hover = reference
+        img 3 look. Static placement + opacity-only close-orbit fade kept.
+      · Parallel session's Phase 13 work (PostFX, campus sky, theme/UI,
+        reception gate dressing) left UNCOMMITTED in the tree on purpose.
+- [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
+      CanvasViewport) → apply.
 - [ ] F: theme files from user (index.css, TopBar, LeftPanel, RightPanel,
       CanvasViewport) → apply.
 - [ ] E: fullscreen board viewer (deferred until D confirmed in browser;

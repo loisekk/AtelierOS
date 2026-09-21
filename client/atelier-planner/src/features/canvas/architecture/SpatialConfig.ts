@@ -67,8 +67,15 @@ export interface RoomZone {
   minX: number; maxX: number; minZ: number; maxZ: number;
 }
 
-// ── ROOM ZONES v1.2 — rotated 90° to match the actual GLB orientation ──
-// Rear row (rotunda end) = -X · Front (reception) = +X · Home side = +Z
+// ── ROOM ZONES v1.3 — front row spans its FULL building extent ──
+// Rear row (rotunda end) = -X · Front (reception gate) = +X · Home side = +Z
+// v1.3 (reference floor-plan alignment): the front rooms were capped at x=11,
+// leaving the front-left/right corner wings (x 11…22.5) OUTSIDE every zone —
+// their boards fell through to the nearest-zone fallback and the meeting
+// room's east board probed into the reception rect, rendering RECEPTION in
+// the middle front room. Per the reference plan: Knowledge Hub = front-left
+// corner room, AI Club = front-right corner room, Meeting Room = middle
+// front, Reception = the gate ONLY (no room, no screens).
 export const ROOM_ZONES: RoomZone[] = [
   { id: 'home_workspace', label: 'Home Workspace',     minX: -22.5, maxX: -10, minZ: 8,     maxZ: 16.5 },
   { id: 'brain_chamber',  label: 'CEO Brain Core',     minX: -22.5, maxX: -10, minZ: -7.5,  maxZ: 7.5 },
@@ -76,17 +83,17 @@ export const ROOM_ZONES: RoomZone[] = [
   { id: 'agent_space',    label: 'Agent Space',        minX: -10,   maxX: 1,   minZ: 8,     maxZ: 16.5 },
   { id: 'command_hub',    label: 'Command Hub',        minX: -10,   maxX: 1,   minZ: -7.5,  maxZ: 7.5 },
   { id: 'office_floor',   label: 'Office Floor',       minX: -10,   maxX: 1,   minZ: -16.5, maxZ: -8 },
-  { id: 'knowledge_hub',  label: 'Knowledge Hub',      minX: 1,     maxX: 11,  minZ: 8,     maxZ: 16.5 },
-  { id: 'meeting_room',   label: 'Meeting Room',       minX: 1,     maxX: 11,  minZ: -7.5,  maxZ: 7.5 },
-  { id: 'ai_club',        label: 'AI Club Lounge',     minX: 1,     maxX: 11,  minZ: -16.5, maxZ: -8 },
-  { id: 'reception',      label: 'Reception',          minX: 11,    maxX: 22.5, minZ: -7.5, maxZ: 7.5 },
+  { id: 'knowledge_hub',  label: 'Knowledge Hub',      minX: 1,     maxX: 22.5, minZ: 8,    maxZ: 16.5 },
+  { id: 'meeting_room',   label: 'Meeting Room',       minX: 1,     maxX: 15,   minZ: -7.5, maxZ: 7.5 },
+  { id: 'ai_club',        label: 'AI Club Lounge',     minX: 1,     maxX: 22.5, minZ: -16.5, maxZ: -8 },
+  { id: 'reception',      label: 'Reception',          minX: 15,    maxX: 22.5, minZ: -7.5, maxZ: 7.5 },
 ];
 
 export const CAMERA_RIGS = {
   office:    { pos: [ 26, 22, 26 ] as const,  lookAt: [ 0, 0, 0 ] as const,      fov: 40 },
   ceo:       { pos: [ 2.8, 5.5, 0.4 ] as const,  lookAt: [ -11.2, 2.6, 0.4 ] as const, fov: 35 },
   command:   { pos: [ 8, 11, 10 ] as const,   lookAt: [ -4.5, 1, 0 ] as const,   fov: 45 },
-  knowledge: { pos: [ 16, 11, 18 ] as const,  lookAt: [ 6, 1, 12 ] as const,     fov: 45 },
+  knowledge: { pos: [ 23, 11, 18 ] as const,  lookAt: [ 11.5, 1, 12.3 ] as const,  fov: 45 },
   top:       { pos: [ 0, 60, 0.01 ] as const, lookAt: [ 0, 0, 0 ] as const,      fov: 34 },
 };
 
