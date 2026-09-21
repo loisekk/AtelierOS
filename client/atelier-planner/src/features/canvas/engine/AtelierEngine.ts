@@ -24,6 +24,19 @@ const ROT_SNAP = Math.PI / 4;  // 45°
 const normRot = (v: number): number => ((v % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 const toDeg = (v: number): number => Math.round((normRot(v) * 180) / Math.PI);
 
+/** Premium-orbit arc (Phase 13, user issue 3): constrained like a product
+ *  configurator — a full sense of the diorama, never inside the walls, never
+ *  under the ground plane, front 138° presentation arc. Special rigs (ortho
+ *  Top view, CEO close-up) relax these in setView(). */
+const ORBIT_LIMITS = {
+  minDistance: 18,                    // can't zoom inside the building
+  maxDistance: 95,                    // stays on the campus, not the horizon
+  minPolarAngle: 0.18,                // near-top-down belongs to the Top view
+  maxPolarAngle: Math.PI / 2 - 0.12,  // never below the ground
+  minAzimuthAngle: -Math.PI / 2.6,    // ≈ ±69° — front presentation arc
+  maxAzimuthAngle: Math.PI / 2.6,
+} as const;
+
 interface EngineCallbacks {
   onStatsUpdate: (items: PlacedItemMeta[]) => void;
   onSelect: (id: string | null) => void;
@@ -136,16 +149,15 @@ export class AtelierEngine {
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     this.controls.enableDamping = true;
     this.controls.target.set(0, 0, 0);
-    // Camera boundary v1: underside & void unreachable (dollhouse top view preserved).
-    this.controls.minDistance = CAMERA_LIMITS.minDistance;
-    this.controls.maxDistance = CAMERA_LIMITS.maxDistance;
-    this.controls.minPolarAngle = CAMERA_LIMITS.minPolarAngle;
-    this.controls.maxPolarAngle = CAMERA_LIMITS.maxPolarAngle;
+    // Premium-orbit arc (see ORBIT_LIMITS). Camera boundary v1's per-frame
+    // floor clamp (minCameraYOverFloor) stays active in animate().
+    this.applyOrbitLimits();
     this.controls.update();
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
     pmremGenerator.dispose();
+    this.scene.environmentIntensity = 0.7; // over-bloom fix (knob c) — scale the env probe scene-wide
 
     const sunLight = new THREE.DirectionalLight(0xFFE4C0, 2.8); // Phase 13 H4: warmer, softer sun
     sunLight.position.set(30, 50, 20);
@@ -1002,10 +1014,33 @@ export class AtelierEngine {
     this.callbacks.onStatsUpdate(this.placedItems);
   }
 
+  /** Strict premium arc — the default 3D orbit. */
+  private applyOrbitLimits(): void {
+    this.controls.minDistance = ORBIT_LIMITS.minDistance;
+    this.controls.maxDistance = ORBIT_LIMITS.maxDistance;
+    this.controls.minPolarAngle = ORBIT_LIMITS.minPolarAngle;
+    this.controls.maxPolarAngle = ORBIT_LIMITS.maxPolarAngle;
+    this.controls.minAzimuthAngle = ORBIT_LIMITS.minAzimuthAngle;
+    this.controls.maxAzimuthAngle = ORBIT_LIMITS.maxAzimuthAngle;
+  }
+
+  /** Relaxed orbit for special rigs (ortho Top view / CEO close-up): full sky,
+   *  free azimuth, inspection-level zoom floor — otherwise the polar/azimuth
+   *  clamps would fight the top-down dollhouse and the ~13-unit brain rig. */
+  private relaxOrbitLimits(): void {
+    this.controls.minDistance = CAMERA_LIMITS.minDistance;
+    this.controls.maxDistance = ORBIT_LIMITS.maxDistance;
+    this.controls.minPolarAngle = CAMERA_LIMITS.minPolarAngle;
+    this.controls.maxPolarAngle = Math.PI;
+    this.controls.minAzimuthAngle = -Infinity;
+    this.controls.maxAzimuthAngle = Infinity;
+  }
+
   public setView(view: 'office' | 'ceo' | 'command' | 'knowledge' | 'top') {
     this.view = view;
     if (view === 'top') {
       this.activeCamera = this.orthoCamera; this.controls.object = this.orthoCamera;
+      this.relaxOrbitLimits(); // top-down dollhouse + free azimuth — the strict arc would clamp it
       this.orthoCamera.position.set(...CAMERA_RIGS.top.pos); this.controls.target.set(...CAMERA_RIGS.top.lookAt);
       this.orthoCamera.zoom = 1; this.orthoCamera.updateProjectionMatrix(); this.controls.update();
       this.postfx.setCamera(this.orthoCamera); // Phase 13 H1 — ortho top view through the composer
@@ -1013,12 +1048,16 @@ export class AtelierEngine {
     }
 
     this.activeCamera = this.camera; this.controls.object = this.camera;
+    this.applyOrbitLimits(); // restore the premium arc (Top view relaxed it)
     this.postfx.setCamera(this.camera); // Phase 13 H1 — back to perspective
     let pos: THREE.Vector3, lookAt: THREE.Vector3, fov: number;
     if (view === 'ceo') {
       lookAt = this.brainAnchor.clone();
       pos = this.brainAnchor.clone().add(new THREE.Vector3(0, 3, 13));
       fov = 35;
+      // The close-up rig sits at ~13.3 from its target — below the 18 orbit
+      // floor — so the CEO view temporarily keeps the inspection zoom floor.
+      this.controls.minDistance = CAMERA_LIMITS.minDistance;
     } else {
       const rig = CAMERA_RIGS[view];
       pos = V(rig.pos); lookAt = V(rig.lookAt); fov = rig.fov;

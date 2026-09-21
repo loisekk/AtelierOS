@@ -14,7 +14,7 @@ import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
  * intermediate render targets stay linear-HDR and the bloom math is
  * physically correct.)
  *
- * Only true emissives bloom (threshold 0.82): agent screens, the CEO
+ * Only true emissives bloom (threshold 0.92): agent screens, the CEO
  * brain core, pendant bulbs, DAG projectors, new accent lighting.
  * Strength 0.32 = premium soft glow, not sci-fi bloom.
  * Half-resolution bloom mips internally = negligible GPU cost.
@@ -31,7 +31,7 @@ export class PostFX {
       new THREE.Vector2(renderer.domElement.width, renderer.domElement.height),
       0.32,  // strength — subtle premium glow
       0.65,  // radius — wide soft falloff
-      0.82,  // threshold — only true emissives bloom
+      0.92,  // threshold — only true emissives bloom (screens ≥0.95, brain 1.4, sconces 2.0+)
     );
     this.composer.addPass(this.bloom);
 

@@ -310,6 +310,54 @@
         Phase G's "Voice Command card" deferred with voice-to-agents (parked).
       · Not committed: .gitignore edit (memory-bank/.verify ignore) — user
         decision pending; progress.md force-added to keep log history.
+- [x] Phase 13 fixes 1–3 + backdrop — OVER-BLOOM TUNE · SOLID PANELS ·
+      PREMIUM ORBIT ARC · CITY PANORAMA (user plan; gates tsc -b 0 ·
+      eslint 0):
+      · Issue 1 over-bloom (building too shiny) — three-knob tune applied in
+        plan order: (a) PostFX bloom threshold 0.82→0.92 (only true
+        emissives — screens ≥0.95, brain 1.4, sconces 2.0+ — cross it);
+        (b) painted material roughness 0.88→0.95, envMapIntensity 0.42→0.28
+        (the equirect sky floods the env probe, so matte-first wins);
+        (c) scene.environmentIntensity = 0.7 after PMREM (scales all env
+        reflections scene-wide, one line). Bloom STRENGTH deliberately kept
+        0.32 — screens/brain/pendants must still glow; strength is the blunt
+        knob, threshold the surgical one. If still shiny on user screenshot:
+        strength → 0.22 is the remaining fallback.
+      · Issue 2 panels solid (reverse of glassmorphism — img 2 composition):
+        --glass-bg 0.72→0.97, --glass-bg-soft 0.55→0.94, --glass-blur 14→6,
+        --glass-border 0.18→0.22 alpha. Card headers/dividers/shadows kept —
+        block structure survives. TopBar chips keep the light frost via NEW
+        dedicated tokens --chip-bg (0.55) / --chip-blur (14px) wired into
+        .glass-chip — they sit over the 3D scene and were never the problem.
+      · Issue 3a premium orbit arc: ORBIT_LIMITS (min 18 / max 95 /
+        polar 0.18…π/2−0.12 / azimuth ±π/2.6 ≈ ±69° front arc) applied via
+        applyOrbitLimits() in the constructor. CAUTION FROM THE PLAN HANDLED:
+        setView('top') calls relaxOrbitLimits() (polar→0, azimuth ±∞,
+        inspection zoom floor) — the ortho dollhouse and the CEO ~13.3-unit
+        close-up rig would both be clamped by the strict arc; CEO branch
+        re-lowers minDistance to CAMERA_LIMITS.minDistance and the non-top
+        branch re-applies the arc. Per-frame minCameraYOverFloor clamp
+        unaffected.
+      · Issue 3b backdrop — Option A (cylinder panorama), implemented
+        PROCEDURALLY in CampusEnvironment: makeCityStripTexture() draws a
+        2048×256 dusk skyline (silhouette blocks + sparse warm lit windows
+        over the #8A644C→#D9A06B→#E8C08D gradient), wrap-safe BY CONSTRUCTION
+        (seeded building run keeps 60–80px margins from the strip edges →
+        the seam is a natural low-rise gap). Mesh: CylinderGeometry
+        (r150, h120, open-ended, BackSide, fog:true) spanning y −2…118 —
+        building bases at ground level, ~75% fog haze at r150. Parallaxes
+        with the camera because it IS in the scene (scene.background image
+        explicitly rejected per plan). Swapping in a real generated PNG later
+        = replacing this one texture. Campus dispose now also frees
+        material.map (city/grass/walkway/shadow canvas textures).
+      · .gitignore: REVERTED per user recommendation — memory-bank stays
+        tracked in git (continuity lifeline). NOTE: .verify/ is now untracked
+        and unignored (visible in git status as ??) — add to .gitignore later
+        if it's scratch.
+      · Gates: tsc -b 0 · eslint 0. Visual checks pending user: bloom only on
+        emissives; panels ceramic-solid vs img 2; orbit clamped to the front
+        arc with Top view + CEO view still working; city haze visible behind
+        the trees at the default angle.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

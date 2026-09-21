@@ -23,8 +23,11 @@ export const AtelierWarmMaterials = {
   pot:       M(0x9A684B, 0.75),
   stone:     M(0xD3B79D, 0.88, 0.0, { envMapIntensity: 0.35 }),
   default:   M(0xC7A98D, 0.80),
-  /** v3: shared material for vertex-painted merged meshes (one for the whole building). */
-  painted:   new THREE.MeshStandardMaterial({ color: 0xFFFFFF, vertexColors: true, roughness: 0.88, envMapIntensity: 0.42 }),
+  /** v3: shared material for vertex-painted merged meshes (one for the whole building).
+   *  Over-bloom fix: matte-first (roughness 0.95) + low env response (0.28) —
+   *  with the equirect sky flooding the env probe, 0.88/0.42 made even "matte"
+   *  walls cross the bloom threshold. */
+  painted:   new THREE.MeshStandardMaterial({ color: 0xFFFFFF, vertexColors: true, roughness: 0.95, envMapIntensity: 0.28 }),
 };
 
 const BOOK_MATS = [0x7A4636, 0x5A3B2B, 0x6E4A4A, 0x4F5B43, 0x8A6245].map(c => M(c, 0.85));

@@ -26,11 +26,17 @@
   --warn: #D09A46;
   --danger: #B85C52;
 
-  /* Phase 13 G — Warm glassmorphism tokens (light-frost variant) */
-  --glass-bg: rgba(244, 236, 224, 0.72);
-  --glass-bg-soft: rgba(244, 236, 224, 0.55);
-  --glass-border: rgba(120, 90, 60, 0.18);
-  --glass-blur: 14px;
+  /* Phase 13 G v2 — solid-warm variant (user issue 2): side panels go
+     ceramic-solid (img 2 composition — the panels float over empty viewport
+     edges, and transparency there read as unfinished, not premium). The
+     TopBar chips KEEP the light frost via their own tokens (--chip-bg /
+     --chip-blur) since they sit over the 3D scene and look right. */
+  --glass-bg: rgba(241, 231, 216, 0.97);
+  --glass-bg-soft: rgba(241, 231, 216, 0.94);
+  --glass-border: rgba(120, 90, 60, 0.22);
+  --glass-blur: 6px;
+  --chip-bg: rgba(244, 236, 224, 0.55);
+  --chip-blur: 14px;
   --block-radius: 14px;
   --block-shadow: 0 10px 36px rgba(60, 40, 20, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.5);
   
@@ -147,9 +153,9 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
   flex-shrink: 0;
 }
 .glass-chip {
-  background: linear-gradient(165deg, rgba(255, 255, 255, 0.35), transparent 45%), var(--glass-bg-soft);
-  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.35), transparent 45%), var(--chip-bg);
+  backdrop-filter: blur(var(--chip-blur)) saturate(150%);
+  -webkit-backdrop-filter: blur(var(--chip-blur)) saturate(150%);
   border: 1px solid var(--glass-border);
   border-radius: 11px;
   box-shadow: 0 6px 22px rgba(60, 40, 20, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.5);

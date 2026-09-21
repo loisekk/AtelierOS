@@ -18,6 +18,51 @@ function canvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2
   return tex;
 }
 
+/**
+ * Seamless dusk city-skyline strip (Option A backdrop) — wrap-safe BY
+ * CONSTRUCTION: the seeded building run starts/stops with margins from the
+ * strip edges, so the cylinder seam is a natural low-rise gap, not a cut.
+ * Silhouettes + sparse lit windows over the sky-gradient horizon (#D9A06B
+ * family) so the seam between scene sky and city is invisible. Swapping in a
+ * real panorama PNG later = replacing this one texture (same UV layout).
+ */
+function makeCityStripTexture(): THREE.CanvasTexture {
+  const W = 2048, H = 256;
+  const c = document.createElement('canvas'); c.width = W; c.height = H;
+  const ctx = c.getContext('2d')!;
+  // Sky band matching the equirect background (mid → horizon → warm base)
+  const sky = ctx.createLinearGradient(0, 0, 0, H);
+  sky.addColorStop(0.00, '#8A644C');
+  sky.addColorStop(0.55, '#D9A06B');
+  sky.addColorStop(1.00, '#E8C08D');
+  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+  // Buildings — seeded RNG, edges kept clear for the seam
+  const rng = mulberry32(20260921);
+  let x = 60;
+  while (x < W - 80) {
+    const w = 30 + rng() * 55;
+    const h = 40 + rng() * 130;
+    const shade = 22 + Math.floor(rng() * 14);
+    ctx.fillStyle = `rgb(${shade + 18}, ${shade + 8}, ${shade})`;
+    ctx.fillRect(x, H - h, w, h);
+    // Sparse lit windows (dusk warm — reads premium at 75% fog haze)
+    const cols = Math.max(1, Math.floor(w / 14));
+    const rows = Math.max(1, Math.floor(h / 18));
+    for (let cx = 0; cx < cols; cx++) {
+      for (let cy = 0; cy < rows; cy++) {
+        if (rng() < 0.16) {
+          ctx.fillStyle = rng() < 0.7 ? 'rgba(255, 217, 160, 0.85)' : 'rgba(255, 195, 126, 0.7)';
+          ctx.fillRect(x + 5 + cx * 14, H - h + 6 + cy * 18, 4, 6);
+        }
+      }
+    }
+    x += w + 6 + rng() * 26;
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export interface CampusEnvironment { dispose(): void; }
 
 /**
@@ -117,6 +162,20 @@ export function setupCampus(scene: THREE.Scene, building: THREE.Object3D): Campu
   trunks.count = leavesLow.count = leavesTop.count = placed;
   [trunks, leavesLow, leavesTop].forEach(mesh => { track(mesh); disposables.push(mesh); });
 
+  // ── City backdrop (user issue 3, Option A): seamless dusk skyline on an
+  // open cylinder INSIDE the fog range — it parallaxes with the camera
+  // because it lives in the scene (a flat scene.background image would not).
+  // Procedural canvas → wrap-safe by construction; ~75% fog haze at this
+  // radius softens it into the distance exactly like the plan wants.
+  const cityTex = makeCityStripTexture();
+  disposables.push(cityTex);
+  const city = new THREE.Mesh(
+    new THREE.CylinderGeometry(150, 150, 120, 64, 1, true),
+    new THREE.MeshBasicMaterial({ map: cityTex, side: THREE.BackSide, fog: true }),
+  );
+  city.position.y = 58; // strip spans y −2…118 — building bases sit at ground level
+  track(city);
+
   // ── I3: Entrance walkway (warm stone tiles, +X front toward the gate) ──
   // The scaled plinth spans ±27.5 × ±18.5 — the strip runs from the plinth
   // edge outward along +X, level with the campus ground.
@@ -177,7 +236,8 @@ export function setupCampus(scene: THREE.Scene, building: THREE.Object3D): Campu
         const mesh = o as THREE.Mesh;
         if (mesh.isMesh) {
           mesh.geometry.dispose();
-          const mat = mesh.material as THREE.Material;
+          const mat = mesh.material as THREE.MeshStandardMaterial;
+          mat?.map?.dispose(); // canvas textures (grass, walkway, city strip, shadow)
           mat?.dispose();
         }
       });
