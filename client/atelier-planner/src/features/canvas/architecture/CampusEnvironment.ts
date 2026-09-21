@@ -18,64 +18,23 @@ function canvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2
   return tex;
 }
 
-/**
- * Seamless dusk city-skyline strip (Option A backdrop) — wrap-safe BY
- * CONSTRUCTION: the seeded building run starts/stops with margins from the
- * strip edges, so the cylinder seam is a natural low-rise gap, not a cut.
- * Silhouettes + sparse lit windows over the sky-gradient horizon (#D9A06B
- * family) so the seam between scene sky and city is invisible. Swapping in a
- * real panorama PNG later = replacing this one texture (same UV layout).
- */
-function makeCityStripTexture(): THREE.CanvasTexture {
-  const W = 2048, H = 256;
-  const c = document.createElement('canvas'); c.width = W; c.height = H;
-  const ctx = c.getContext('2d')!;
-  // Sky band matching the equirect background (mid → horizon → warm base)
-  const sky = ctx.createLinearGradient(0, 0, 0, H);
-  sky.addColorStop(0.00, '#8A644C');
-  sky.addColorStop(0.55, '#D9A06B');
-  sky.addColorStop(1.00, '#E8C08D');
-  ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
-  // Buildings — seeded RNG, edges kept clear for the seam
-  const rng = mulberry32(20260921);
-  let x = 60;
-  while (x < W - 80) {
-    const w = 30 + rng() * 55;
-    const h = 40 + rng() * 130;
-    const shade = 22 + Math.floor(rng() * 14);
-    ctx.fillStyle = `rgb(${shade + 18}, ${shade + 8}, ${shade})`;
-    ctx.fillRect(x, H - h, w, h);
-    // Sparse lit windows (dusk warm — reads premium at 75% fog haze)
-    const cols = Math.max(1, Math.floor(w / 14));
-    const rows = Math.max(1, Math.floor(h / 18));
-    for (let cx = 0; cx < cols; cx++) {
-      for (let cy = 0; cy < rows; cy++) {
-        if (rng() < 0.16) {
-          ctx.fillStyle = rng() < 0.7 ? 'rgba(255, 217, 160, 0.85)' : 'rgba(255, 195, 126, 0.7)';
-          ctx.fillRect(x + 5 + cx * 14, H - h + 6 + cy * 18, 4, 6);
-        }
-      }
-    }
-    x += w + 2 + rng() * 10; // dense skyline — tighter gaps (Path B visibility)
-  }
-  // Baked distance haze (replaces scene fog on the strip): warm horizon
-  // wash, dense at the building line, fading up toward the sky band.
-  const haze = ctx.createLinearGradient(0, H, 0, H - 180);
-  haze.addColorStop(0, 'rgba(217, 160, 107, 0)');
-  haze.addColorStop(1, 'rgba(217, 160, 107, 0.45)');
-  ctx.fillStyle = haze;
-  ctx.fillRect(0, H - 180, W, 180);
-  const tex = new THREE.CanvasTexture(c);
-  tex.colorSpace = THREE.SRGBColorSpace;
-  return tex;
-}
-
 export interface CampusEnvironment { dispose(): void; }
 
 /**
- * Phase 13 H2 — warm dusk-gradient sky + matched fog. Called at engine
- * construction so the pre-GLB frames already have a sky (no black flash).
- * Fog color = horizon color → the campus ground dissolves seamlessly into it.
+ * Warm backdrop — turntable edition. Paints the procedural gradient
+ * IMMEDIATELY (no black flash on pre-GLB frames), then streams in the
+ * generated equirect panorama (public/textures/atelier-panorama.jpg —
+ * 2:1, horizon-centered, warm #E8C08D/#D9A06B/#8A644C haze grade, edges
+ * seam-blended) and swaps scene.background once decoded.
+ *
+ * Background ONLY — the PMREM RoomEnvironment stays the env probe
+ * (AtelierEngine), so reflections keep their neutral studio character
+ * and the glass never mirrors the panorama's bright horizon band.
+ *
+ * Background pinning (turntable B+): 'simple' option — an equirect
+ * scene.background renders camera-centered, so on the ±70° orbit rail
+ * the composition barely shifts. No billboard plane needed.
+ * Fog color = horizon color → the campus ground dissolves into the haze.
  */
 export function setupSky(scene: THREE.Scene): void {
   const sky = canvasTexture(16, 256, ctx => {
@@ -88,6 +47,19 @@ export function setupSky(scene: THREE.Scene): void {
   });
   sky.mapping = THREE.EquirectangularReflectionMapping; // 360° backdrop, not a flat card
   scene.background = sky;
+
+  new THREE.TextureLoader().load(
+    '/textures/atelier-panorama.jpg',
+    tex => {
+      tex.mapping = THREE.EquirectangularReflectionMapping;
+      tex.colorSpace = THREE.SRGBColorSpace; // JPEG is sRGB — critical, else it washes out
+      scene.background = tex;
+      sky.dispose(); // fallback gradient no longer needed
+    },
+    undefined,
+    () => console.warn('🖼️ atelier-panorama.jpg failed to load — procedural gradient sky stays.'),
+  );
+
   scene.fog = new THREE.Fog(0xD9A06B, 95, 190); // energy fix: near pushed past the building (was 60) — no more haze wash on zoom-out
 }
 
@@ -169,21 +141,6 @@ export function setupCampus(scene: THREE.Scene, building: THREE.Object3D): Campu
   trunks.count = leavesLow.count = leavesTop.count = placed;
   [trunks, leavesLow, leavesTop].forEach(mesh => { track(mesh); disposables.push(mesh); });
 
-  // ── City backdrop (Option A): seamless dusk skyline on an open cylinder —
-  // it parallaxes with the camera because it lives in the scene. Path B
-  // (interim): fog disabled, distance haze baked INTO the texture — the city
-  // reads crisply at every orbit angle instead of dissolving at r150.
-  // Path A (later): swap in a real equirect panorama as scene.background
-  // (industry standard, rotates with the camera) — texture swap only.
-  const cityTex = makeCityStripTexture();
-  disposables.push(cityTex);
-  const city = new THREE.Mesh(
-    new THREE.CylinderGeometry(150, 150, 120, 64, 1, true),
-    new THREE.MeshBasicMaterial({ map: cityTex, side: THREE.BackSide, fog: false }),
-  );
-  city.position.y = 58; // strip spans y −2…118 — building bases sit at ground level
-  track(city);
-
   // ── I3: Entrance walkway (warm stone tiles, +X front toward the gate) ──
   // The scaled plinth spans ±27.5 × ±18.5 — the strip runs from the plinth
   // edge outward along +X, level with the campus ground.
@@ -245,7 +202,7 @@ export function setupCampus(scene: THREE.Scene, building: THREE.Object3D): Campu
         if (mesh.isMesh) {
           mesh.geometry.dispose();
           const mat = mesh.material as THREE.MeshStandardMaterial;
-          mat?.map?.dispose(); // canvas textures (grass, walkway, city strip, shadow)
+          mat?.map?.dispose(); // canvas textures (grass, walkway, shadow)
           mat?.dispose();
         }
       });

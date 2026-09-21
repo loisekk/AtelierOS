@@ -428,6 +428,56 @@
         matte; panels balanced (0.88); Voice/Brain cards present and
         waveform moves while listening; city skyline visible at every
         angle.
+- [x] Phase 13 turntable — EQUIRECT PANORAMA BACKDROP + TURNTABLE MODE B+
+      (user handoff spec; gates tsc -b 0 · eslint 0):
+      · BACKDROP: the procedural city cylinder (Path B) RETIRED —
+        makeCityStripTexture + the r150 open-cylinder mesh deleted from
+        CampusEnvironment (trees / walkway / path lights / contact shadow
+        kept — foreground campus). setupSky now paints the old warm gradient
+        INSTANTLY (no black flash) and streams in the generated equirect
+        panorama public/textures/atelier-panorama.jpg (2048×1024 exact 2:1,
+        horizon-centered, warm #E8C08D/#D9A06B/#8A644C haze grade, NO city /
+        NO subject — img-2 gallery-haze direction; right 8% cross-faded into
+        the left edge per row = seamless wrap). On load:
+        EquirectangularReflectionMapping + SRGBColorSpace, scene.background
+        swap, gradient fallback disposed; load failure keeps the gradient
+        (console warn). BACKGROUND ONLY — PMREM RoomEnvironment stays the
+        env probe (env 0.5), so glass never mirrors the panorama. Fog kept
+        (0xD9A06B, 95, 190) — ground disc still dissolves into the haze.
+      · TURNTABLE B+ (static backdrop, rotating building LOOK): the camera
+        got the rail, NOT the building (Approach A poison avoided — zero
+        world-coordinate desync). ORBIT_LIMITS azimuth ±2.35 → ±1.22 (±70°
+        presentation rail; all perspective rigs' azimuths verified inside:
+        office 45°, command 51°, knowledge 64°, CEO 0°). Background pinning
+        = the 'simple' option: equirect scene.background renders
+        camera-centered, so on a ±70° rail the composition barely shifts —
+        no billboard plane needed. Drag = default OrbitControls orbit.
+      · IDLE AUTO-ROTATE: after 10 s of no input in the DEFAULT OFFICE view
+        the camera drifts along the rail (autoRotateSpeed 0.55 ≈ 2°/s with
+        damping) and any interaction stops it — hooks: controls 'start'
+        (covers drag/wheel/keys, kills autoRotate + resets idle timer),
+        'end' (restarts countdown after a gesture), setView (resets idle +
+        kills autoRotate so the drift can never fight the 1200 ms rig tween).
+        Direction flips at the rail ends (±0.06 margin) so the drift
+        ping-pongs instead of sticking. ⚠ SIGN CONVENTION (cost a debug
+        round): OrbitControls.rotateLeft — positive autoRotateSpeed
+        DECREASES azimuth → retreat from the MAX rail needs +dir, from the
+        MIN rail −dir; inverted either way pins the camera against the
+        clamp. Verified numerically in-browser: drift 6.5→26°/10s, rail
+        bounce −70→+40, pointer drag stops it.
+      · Other rigs untouched (relaxOrbitLimits for ortho Top + CEO
+        minDistance override intact; UI 2D⇄Office round-trip verified live,
+        exact ortho rig 0,60,0 zoom 1 on return).
+      · Gates: bun run typecheck 0 · bun run lint 0. Visual checks passed:
+        warm haze backdrop, no city; drift engages ~10 s after load, bounces
+        at both rails; drag kills it; 2D + Office views land.
+      · Test-session notes (NOT product bugs): synthetic pointerup
+        dispatched on window (not document) leaves OrbitControls' pointer
+        state stuck → pollutes subsequent engine.setView probes in the same
+        page session; a fresh reload + real UI clicks behave perfectly.
+        StrictMode double-mounts useAtelier in dev (two 'Auto-furnished'
+        logs) — second engine is the live one, dispose path handles the
+        first (only one 1920×935 three.js canvas in the DOM).
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

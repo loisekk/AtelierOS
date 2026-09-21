@@ -24,19 +24,29 @@ const ROT_SNAP = Math.PI / 4;  // 45°
 const normRot = (v: number): number => ((v % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 const toDeg = (v: number): number => Math.round((normRot(v) * 180) / Math.PI);
 
-/** Premium-orbit arc (Phase 13, user issue 3): constrained like a product
- *  configurator — a full sense of the diorama, never inside the walls, never
- *  under the ground plane, front 138° presentation arc. Special rigs (ortho
- *  Top view, CEO close-up) relax these in setView(). */
+/** Turntable arc (turntable B+, user plan): a constrained product-configurator
+ *  rail — the camera orbits a ±70° arc around the default office rig while the
+ *  equirect background renders camera-centered, so the building appears to
+ *  turn in front of a fixed warm backdrop. Never inside the walls, never under
+ *  the ground plane. Special rigs (ortho Top view, CEO close-up) relax the
+ *  distance/polar limits in setView(); all perspective rigs' azimuths were
+ *  verified inside ±70° (office 45°, command 51°, knowledge 64°, CEO 0°). */
 const ORBIT_LIMITS = {
   minDistance: 14,                    // more zoom-in room (was 18)
   maxDistance: 95,                    // stays on the campus, not the horizon
   minPolarAngle: 0.12,                // a bit more top-down freedom (was 0.18)
   maxPolarAngle: Math.PI / 2 - 0.12,  // never below the ground
-  minAzimuthAngle: -2.35,             // ±135° → a 270° viewing arc (the
-  maxAzimuthAngle: 2.35,              // procedural city wraps 360°, so the
-}; // tight front-only arc's justification is gone. If it still feels boxed
-   // in: delete both azimuth lines — full 360° is now visually safe.
+  minAzimuthAngle: -1.22,             // ±70° presentation rail — the turntable
+  maxAzimuthAngle: 1.22,              // look: the building turns, backdrop stays
+};
+
+/** Turntable idle auto-rotate: drift starts after this much no-input time in
+ *  the default office view and stops on any interaction. */
+const TURNTABLE_IDLE_MS = 10_000;
+/** Azimuth margin from a rail end at which the drift direction flips. */
+const TURNTABLE_RAIL_MARGIN = 0.06;
+/** autoRotateSpeed at the rail (OrbitControls scale: 2.0 = 30 s/turn). */
+const TURNTABLE_SPEED = 0.55;
 
 interface EngineCallbacks {
   onStatsUpdate: (items: PlacedItemMeta[]) => void;
@@ -57,6 +67,10 @@ export class AtelierEngine {
   private controls: OrbitControls;
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
+
+  // ── Turntable (B+): idle auto-rotate state (default office view only) ──
+  private lastInteraction = performance.now();
+  private turntableDir = 1; // drift direction along the rail — flips at the ends
 
   private buildingRoot!: THREE.Group;
   private floor!: THREE.Mesh;
@@ -154,6 +168,20 @@ export class AtelierEngine {
     // floor clamp (minCameraYOverFloor) stays active in animate().
     this.applyOrbitLimits();
     this.controls.update();
+
+    // ── Turntable idle tracking ──
+    // OrbitControls fires 'start' on EVERY interaction entry point (pointer
+    // drag, wheel zoom, keyboard) — one hook covers all input. 'end' restarts
+    // the idle countdown when the gesture finishes, so a long drag doesn't
+    // hand back to the drift mid-experience. The drift itself lives in
+    // updateTurntable(), driven from animate().
+    this.controls.addEventListener('start', () => {
+      this.lastInteraction = performance.now();
+      this.controls.autoRotate = false; // any touch stops the turntable
+    });
+    this.controls.addEventListener('end', () => {
+      this.lastInteraction = performance.now();
+    });
 
     const pmremGenerator = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmremGenerator.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -1039,6 +1067,10 @@ export class AtelierEngine {
 
   public setView(view: 'office' | 'ceo' | 'command' | 'knowledge' | 'top') {
     this.view = view;
+    // Turntable: a view switch is an interaction — stop the drift and restart
+    // the idle countdown so autoRotate can never fight the 1200 ms rig tween.
+    this.lastInteraction = performance.now();
+    this.controls.autoRotate = false;
     if (view === 'top') {
       this.activeCamera = this.orthoCamera; this.controls.object = this.orthoCamera;
       this.relaxOrbitLimits(); // top-down dollhouse + free azimuth — the strict arc would clamp it
@@ -1078,7 +1110,9 @@ export class AtelierEngine {
     };
     animate();
   }
-
+  fromView(view: 'office' | 'ceo' | 'command' | 'knowledge' | 'top'): boolean {
+    return this.view === view;
+  }
   public toggleFireEgress(show: boolean) {
     if (show) {
       if (this.egressGroup) return;
@@ -1110,6 +1144,7 @@ export class AtelierEngine {
     console.log('%c[CALIB] Click the floor of: ' + this.calibQueue[0], 'color:#B96D3D;font-weight:bold;font-size:14px');
   }
 
+  
   private onCalibDown = (e: PointerEvent) => { this.calibDown = { x: e.clientX, y: e.clientY }; };
 
   private onCalibClick = (e: MouseEvent) => {
@@ -1131,11 +1166,37 @@ export class AtelierEngine {
     this.calibrationActive = false;
     this.renderer.domElement.removeEventListener('pointerdown', this.onCalibDown);
     this.renderer.domElement.removeEventListener('click', this.onCalibClick);
+    this.lastInteraction = performance.now();
+    this.controls.autoRotate = false;
+
     const body = Object.entries(this.calibPts).map(([k, p]) => `  ${k}: [${p.x.toFixed(2)}, ${p.y.toFixed(2)}, ${p.z.toFixed(2)}],`).join('\n');
     const out = `// Paste into SpatialConfig.ts → WAYPOINTS\n${body}`;
     navigator.clipboard.writeText(out).catch(() => {});
     console.log(out);
+    this.lastInteraction = performance.now();
     console.log('%c📋 Copied — paste into SpatialConfig.ts AND into the chat', 'color:#2E7D32;font-weight:bold');
+  }
+
+  /** Turntable drift (turntable B+ step 4): after TURNTABLE_IDLE_MS with no
+   *  input in the default office view, the camera eases slowly along its
+   *  azimuth rail — classic turntable, the building seeming to spin against
+   *  the fixed warm backdrop. Direction flips at the rail ends so the drift
+   *  never sticks against a clamp. Any interaction ('start' listener) or view
+   *  switch (setView) stops it. Other rigs are untouched. */
+  private updateTurntable(): void {
+    if (this.view !== 'office') { this.controls.autoRotate = false; return; }
+    if (performance.now() - this.lastInteraction < TURNTABLE_IDLE_MS) {
+      this.controls.autoRotate = false;
+      return;
+    }
+    const az = this.controls.getAzimuthalAngle();
+    // Sign convention (OrbitControls.rotateLeft): positive autoRotateSpeed
+    // DECREASES azimuth. So retreat from the MAX rail needs +dir, and from
+    // the MIN rail needs −dir — inverted either way sticks against the clamp.
+    if (az > ORBIT_LIMITS.maxAzimuthAngle - TURNTABLE_RAIL_MARGIN) this.turntableDir = 1;
+    else if (az < ORBIT_LIMITS.minAzimuthAngle + TURNTABLE_RAIL_MARGIN) this.turntableDir = -1;
+    this.controls.autoRotateSpeed = TURNTABLE_SPEED * this.turntableDir;
+    this.controls.autoRotate = true;
   }
 
   private animate = () => {
@@ -1180,6 +1241,7 @@ export class AtelierEngine {
     }
     if (this.brainLight) this.brainLight.intensity = 3 + Math.sin(t * 2) * 1.5;
 
+    this.updateTurntable(); // turntable B+ — idle drift along the office rail (must precede update)
     this.controls.update();
     // Per-frame camera safety net (Camera boundary v1): even pan-drags that dodge
     // OrbitControls' spherical limits can never take the camera under the slab.
