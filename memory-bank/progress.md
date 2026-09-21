@@ -291,6 +291,25 @@
       · Gates: tsc -b exit 0 · eslint 0/0. Visual verification (bun run dev:
         glass panels over full-bleed stage, dusk campus, walkway + path
         lights, vertex-painted walls, violet brain rotunda) PENDING user.
+- [x] Phase 13 plan sweep (user pasted full G/H/I spec) — two remaining gaps
+      closed (gates tsc -b 0 · eslint 0):
+      · I3 wall_sconce was catalog-only, never placed → 3 emissive sconces in
+        commandHub v2.2 (bottom wall ×2 facing the room fFace('up'), left
+        wall ×1 facing fFace('right')) — kept clear of the right-wall
+        shelving run and the top dispatch screens; bloom glows them for free.
+      · Phase G "block-divided" panels: RightPanel was ONE big glass card →
+        split into per-block cards like LeftPanel: main mode = Company
+        Status / Employee Workstation / Live Activity; settings mode =
+        Capacity Planner / Fire egress / Live Costing / Placed Items. All
+        section headers moved to .panel-section-title (matches LeftPanel +
+        the glass tokens); root asides are transparent gap-10 columns so
+        .floating-right scrolls the card stack.
+      · Verified already-satisfied by earlier commits: H1 PostFX (wired incl.
+        ortho setCamera), H2 sky, H3 campus, H4 sun/hemisphere, I1 vertex
+        paint + contact shadow, I2 entrance_mat + path lights, glass shell.
+        Phase G's "Voice Command card" deferred with voice-to-agents (parked).
+      · Not committed: .gitignore edit (memory-bank/.verify ignore) — user
+        decision pending; progress.md force-added to keep log history.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

@@ -25,9 +25,9 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
 
   if (mode === 'main') {
     return (
-      <aside className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflowY: 'auto' }}>
-        <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
-          <div className="panel-title"><span>Company Status</span></div>
+      <aside style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'transparent', border: 'none' }}>
+        <div className="glass-card">
+          <div className="panel-section-title">Company Status</div>
           <div className="space-y-0.5">
             <div className="stat-row"><span className="stat-label">Total Employees</span><span className="stat-value font-mono">{employees.length}</span></div>
             <div className="stat-row"><span className="stat-label">Working</span><span className="stat-value font-mono" style={{color: 'var(--success)'}}>{employees.filter(e => e.status === 'working').length}</span></div>
@@ -35,8 +35,8 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
           </div>
         </div>
 
-        <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
-          <div className="panel-title"><span>Employee Workstation</span></div>
+        <div className="glass-card">
+          <div className="panel-section-title">Employee Workstation</div>
           {!selectedEmployee ? (
             <div className="text-[11px] text-center py-4" style={{ color: 'var(--charcoal-3)' }}>
               Select an employee in the office to view their details.
@@ -85,8 +85,8 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
           )}
         </div>
 
-        <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
-          <div className="panel-title"><span>Live Activity</span></div>
+        <div className="glass-card">
+          <div className="panel-section-title">Live Activity</div>
           {tasks.length === 0 ? (
             <div className="text-[11px] text-center py-4" style={{ color: 'var(--charcoal-3)' }}>No active tasks. Dispatch work to your team!</div>
           ) : (
@@ -109,9 +109,9 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
   }
 
   return (
-    <aside className="glass-card" style={{ display: 'flex', flexDirection: 'column', padding: 0, overflowY: 'auto' }}>
-      <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
-        <div className="panel-title"><span>Capacity Planner</span></div>
+    <aside style={{ display: 'flex', flexDirection: 'column', gap: 10, background: 'transparent', border: 'none' }}>
+      <div className="glass-card">
+        <div className="panel-section-title">Capacity Planner</div>
         <div className="mb-3">
           <div className="flex justify-between text-[11px] mb-1.5">
             <span style={{ color: 'var(--charcoal-3)' }}>Occupancy</span>
@@ -124,8 +124,8 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
           <div className="stat-row"><span className="stat-label">Floor area</span><span className="stat-value font-mono">{roomArea} m²</span></div>
         </div>
       </div>
-      <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
-        <div className="stat-row" style={{ paddingBottom: 8, borderBottom: '1px solid var(--line-soft)' }}>
+      <div className="glass-card">
+        <div className="stat-row" style={{ paddingBottom: 8 }}>
           <span className="stat-label flex items-center gap-2">
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: overCapacity ? 'var(--danger)' : 'var(--success)' }}></span>
             Fire egress
@@ -133,16 +133,16 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
           <span className="stat-value text-[12px]" style={{ color: overCapacity ? 'var(--danger)' : 'var(--charcoal)' }}>{overCapacity ? 'Over limit' : 'Compliant'}</span>
         </div>
       </div>
-      <div style={{ padding: 16, borderBottom: '1px solid var(--line-soft)' }}>
-        <div className="panel-title"><span>Live Costing</span></div>
+      <div className="glass-card">
+        <div className="panel-section-title">Live Costing</div>
         <div className="flex items-baseline justify-between mb-3">
           <span className="text-[11px]" style={{ color: 'var(--charcoal-3)' }}>Estimated total</span>
           <span className="font-display font-black text-2xl" style={{ color: 'var(--accent)' }}>${total.toLocaleString()}</span>
         </div>
         <button className="btn btn-primary w-full justify-center" onClick={openCost}><i className="fa-solid fa-receipt text-[11px]"></i>View breakdown</button>
       </div>
-      <div style={{ padding: 16, overflowY: 'auto', flex: 1 }}>
-        <div className="panel-title"><span>Placed Items</span></div>
+      <div className="glass-card">
+        <div className="panel-section-title">Placed Items</div>
         {placedItems.length === 0 ? <div className="text-[11px] text-center py-4" style={{ color: 'var(--charcoal-3)' }}>No items yet.</div> : (
           <div className="space-y-1.5">
             {placedItems.map(item => (

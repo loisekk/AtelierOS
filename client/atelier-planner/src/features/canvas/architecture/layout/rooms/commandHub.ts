@@ -12,8 +12,14 @@ export const commandHub: RoomBuilder = (add, r, preset) => {
   shelfWall(add, r, 0.86, 0.2, fFace('left'), 2, 1.2);                  // 5,6 right-wall shelving run
   add('plant_large', ...img(r, -0.8, 0.8));                                    // 7 corner greens
   add('plant_large', ...img(r, 0.8, 0.8));                                     // 8
+  // ── v2.2 Phase 13 I3 — accent lighting: emissive wall sconces along the
+  // open walls (PostFX bloom glows them; zero PointLights). Kept clear of
+  // the right-wall shelving run and the top dispatch screens.
+  add('wall_sconce', ...img(r, -0.5, 0.9), fFace('up'));                       // 9-11 sconce run
+  add('wall_sconce', ...img(r, 0.5, 0.9), fFace('up'));
+  add('wall_sconce', ...img(r, -0.9, 0), fFace('right'));
   if (preset === 'dense') {                                                    // ── v2.1 side greens ──
-    add('plant_large', ...img(r, -0.8, -0.2));                                 // 9
-    add('plant_large', ...img(r, 0.8, -0.2));                                  // 10
+    add('plant_large', ...img(r, -0.8, -0.2));                                 // 12
+    add('plant_large', ...img(r, 0.8, -0.2));                                  // 13
   }
 };
