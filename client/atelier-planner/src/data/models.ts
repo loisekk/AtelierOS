@@ -7,7 +7,7 @@ export interface ModelOption {
 
 export const MODEL_REGISTRY: ModelOption[] = [
   // OpenRouter (BYOK / Free Tiers)
-  { id: 'glm-4', name: 'GLM-4 (Free)', provider: 'OpenRouter', isFree: true },
+  { id: 'glm-3', name: 'GLM-3 (Free)', provider: 'OpenRouter', isFree: true },
   { id: 'qwen-2.5', name: 'Qwen 2.5 (Free)', provider: 'OpenRouter', isFree: true },
   { id: 'llama-3.3', name: 'Llama 3.3 (Free)', provider: 'OpenRouter', isFree: true },
   { id: 'claude-opus', name: 'Claude Opus', provider: 'OpenRouter' },

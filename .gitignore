@@ -38,6 +38,10 @@ Thumbs.db
 *.log
 logs/
 
+# Memory 
+.verify/
+memory-bank/
+
 # Docker volumes / data
 /data/
 volumes/

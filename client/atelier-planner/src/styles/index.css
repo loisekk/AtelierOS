@@ -177,12 +177,17 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
 }
 .topbar-glass > * { pointer-events: auto; }
 
-/* Floating panel columns — vertical stacks of glass blocks */
+/* Floating panel columns — vertical stacks of glass blocks.
+   The columns still scroll (wheel/drag) when content exceeds the viewport,
+   but the bare OS scrollbar is hidden — it read cheap over the glass. */
 .floating-left, .floating-right {
   position: absolute; top: 72px; bottom: 14px; z-index: 40;
   display: flex; flex-direction: column; gap: 10px;
   overflow-y: auto; overflow-x: hidden; padding: 2px;
+  scrollbar-width: none; -ms-overflow-style: none;
 }
+.floating-left::-webkit-scrollbar,
+.floating-right::-webkit-scrollbar { display: none; }
 .floating-left { left: 14px; width: 240px; }
 .floating-right { right: 14px; width: 300px; }
 .floating-left > *, .floating-right > * { width: 100%; }

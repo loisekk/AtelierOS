@@ -478,6 +478,31 @@
         StrictMode double-mounts useAtelier in dev (two 'Auto-furnished'
         logs) — second engine is the live one, dispose path handles the
         first (only one 1920×935 three.js canvas in the DOM).
+- [x] Phase 13 free orbit + scrollbar purge (user feedback, same session;
+      gates tsc -b 0 · eslint 0):
+      · ROTATIONAL LIMITS REMOVED (user: "removed all of the rotational
+        limitations"): the ±70° turntable rail is gone — ORBIT_LIMITS azimuth
+        = ±Infinity → full 360° orbit, no invisible walls. Distance (14…95)
+        and polar (0.12…π/2−0.12) clamps KEPT deliberately: those are
+        positional sanity (never inside the walls / under the ground plane),
+        not rotation locks — the per-frame floor clamp also stays. Verified
+        in-browser: camera orbited freely 102.7° → −142.7° (and the idle
+        drift spun right past the old rail without reversing).
+      · TURNTABLE simplified to match: no rails → no rail-bounce logic
+        (TURNTABLE_RAIL_MARGIN + turntableDir deleted; the rotateLeft sign
+        convention trap is now moot). Idle drift = one continuous slow spin
+        (autoRotateSpeed 0.55) after 10 s no-input in the office view, any
+        interaction / view switch stops it. Idle hooks ('start'/'end'/
+        setView) unchanged.
+      · SCROLLBAR REMOVED (user: the bare OS scrollbar strip next to the
+        floating glass panels "looked very cheap"): .floating-left /
+        .floating-right get scrollbar-width:none + ::-webkit-scrollbar
+        display:none (+ -ms-overflow-style). Columns still scroll by wheel/
+        drag when content exceeds the viewport — the bar is just invisible;
+        the customize-mode furniture list keeps its styled 4px .scroll-thin
+        bar. Verified: computed scrollbarWidth none on .floating-left.
+      · Gates: bun run typecheck 0 · bun run lint 0. Visual: clean panel
+        edge, free-orbit rear view of the diorama renders correctly.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are

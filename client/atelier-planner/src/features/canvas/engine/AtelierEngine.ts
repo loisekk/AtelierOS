@@ -24,28 +24,25 @@ const ROT_SNAP = Math.PI / 4;  // 45°
 const normRot = (v: number): number => ((v % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
 const toDeg = (v: number): number => Math.round((normRot(v) * 180) / Math.PI);
 
-/** Turntable arc (turntable B+, user plan): a constrained product-configurator
- *  rail — the camera orbits a ±70° arc around the default office rig while the
- *  equirect background renders camera-centered, so the building appears to
- *  turn in front of a fixed warm backdrop. Never inside the walls, never under
- *  the ground plane. Special rigs (ortho Top view, CEO close-up) relax the
- *  distance/polar limits in setView(); all perspective rigs' azimuths were
- *  verified inside ±70° (office 45°, command 51°, knowledge 64°, CEO 0°). */
+/** FREE ORBIT (user decision — the ±70° turntable rail is gone): the camera
+ *  orbits a full 360° around the diorama, no invisible walls. Distance and
+ *  polar clamps stay (never inside the walls, never under the ground plane —
+ *  those are positional sanity, not rotation locks). Special rigs (ortho Top
+ *  view, CEO close-up) relax the distance/polar limits in setView(). */
 const ORBIT_LIMITS = {
   minDistance: 14,                    // more zoom-in room (was 18)
   maxDistance: 95,                    // stays on the campus, not the horizon
   minPolarAngle: 0.12,                // a bit more top-down freedom (was 0.18)
   maxPolarAngle: Math.PI / 2 - 0.12,  // never below the ground
-  minAzimuthAngle: -1.22,             // ±70° presentation rail — the turntable
-  maxAzimuthAngle: 1.22,              // look: the building turns, backdrop stays
+  minAzimuthAngle: -Infinity,         // full 360° — no rail, no invisible walls
+  maxAzimuthAngle: Infinity,
 };
 
-/** Turntable idle auto-rotate: drift starts after this much no-input time in
- *  the default office view and stops on any interaction. */
+/** Turntable idle auto-rotate: the drift starts after this much no-input time
+ *  in the default office view and stops on any interaction. With the free
+ *  360° orbit there are no rails — it's one continuous, slow spin. */
 const TURNTABLE_IDLE_MS = 10_000;
-/** Azimuth margin from a rail end at which the drift direction flips. */
-const TURNTABLE_RAIL_MARGIN = 0.06;
-/** autoRotateSpeed at the rail (OrbitControls scale: 2.0 = 30 s/turn). */
+/** autoRotateSpeed (OrbitControls scale: 2.0 = 30 s/turn). */
 const TURNTABLE_SPEED = 0.55;
 
 interface EngineCallbacks {
@@ -68,9 +65,8 @@ export class AtelierEngine {
   private raycaster = new THREE.Raycaster();
   private mouse = new THREE.Vector2();
 
-  // ── Turntable (B+): idle auto-rotate state (default office view only) ──
+  // ── Turntable: idle auto-rotate state (default office view only) ──
   private lastInteraction = performance.now();
-  private turntableDir = 1; // drift direction along the rail — flips at the ends
 
   private buildingRoot!: THREE.Group;
   private floor!: THREE.Mesh;
@@ -1177,25 +1173,17 @@ export class AtelierEngine {
     console.log('%c📋 Copied — paste into SpatialConfig.ts AND into the chat', 'color:#2E7D32;font-weight:bold');
   }
 
-  /** Turntable drift (turntable B+ step 4): after TURNTABLE_IDLE_MS with no
-   *  input in the default office view, the camera eases slowly along its
-   *  azimuth rail — classic turntable, the building seeming to spin against
-   *  the fixed warm backdrop. Direction flips at the rail ends so the drift
-   *  never sticks against a clamp. Any interaction ('start' listener) or view
-   *  switch (setView) stops it. Other rigs are untouched. */
+  /** Turntable drift: after TURNTABLE_IDLE_MS with no input in the default
+   *  office view, the camera eases into one continuous slow spin — classic
+   *  turntable. Any interaction ('start' listener) or view switch (setView)
+   *  stops it. Other rigs are untouched. */
   private updateTurntable(): void {
     if (this.view !== 'office') { this.controls.autoRotate = false; return; }
     if (performance.now() - this.lastInteraction < TURNTABLE_IDLE_MS) {
       this.controls.autoRotate = false;
       return;
     }
-    const az = this.controls.getAzimuthalAngle();
-    // Sign convention (OrbitControls.rotateLeft): positive autoRotateSpeed
-    // DECREASES azimuth. So retreat from the MAX rail needs +dir, and from
-    // the MIN rail needs −dir — inverted either way sticks against the clamp.
-    if (az > ORBIT_LIMITS.maxAzimuthAngle - TURNTABLE_RAIL_MARGIN) this.turntableDir = 1;
-    else if (az < ORBIT_LIMITS.minAzimuthAngle + TURNTABLE_RAIL_MARGIN) this.turntableDir = -1;
-    this.controls.autoRotateSpeed = TURNTABLE_SPEED * this.turntableDir;
+    this.controls.autoRotateSpeed = TURNTABLE_SPEED;
     this.controls.autoRotate = true;
   }
 
