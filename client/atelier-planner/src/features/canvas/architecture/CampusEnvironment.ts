@@ -21,20 +21,23 @@ function canvasTexture(w: number, h: number, draw: (ctx: CanvasRenderingContext2
 export interface CampusEnvironment { dispose(): void; }
 
 /**
- * Warm backdrop — turntable edition. Paints the procedural gradient
+ * Warm backdrop — static photo card. Paints the procedural gradient
  * IMMEDIATELY (no black flash on pre-GLB frames), then streams in the
- * generated equirect panorama (public/textures/atelier-panorama.jpg —
- * 2:1, horizon-centered, warm #E8C08D/#D9A06B/#8A644C haze grade, edges
- * seam-blended) and swaps scene.background once decoded.
+ * equirect backdrop photo (public/textures/background.png — 2:1, horizon
+ * at mid-height, so the upper half reads as sky and the lower half sits
+ * behind the plinth) and swaps scene.background once decoded.
  *
  * Background ONLY — the PMREM RoomEnvironment stays the env probe
  * (AtelierEngine), so reflections keep their neutral studio character
  * and the glass never mirrors the panorama's bright horizon band.
  *
- * Background pinning (turntable B+): 'simple' option — an equirect
- * scene.background renders camera-centered, so on the ±70° orbit rail
- * the composition barely shifts. No billboard plane needed.
- * Fog color = horizon color → the campus ground dissolves into the haze.
+ * Background pinning — an equirect scene.background is CAMERA-CENTERED, so
+ * the photo never runs out at any orbit distance. AtelierEngine.animate()
+ * additionally pins scene.backgroundRotation to the orbit azimuth
+ * (USE_2D_BACKDROP), so the card hangs still while the diorama turns in
+ * front of it. No billboard plane needed.
+ * The fog below is authored for the world mode only — in 2D-backdrop mode
+ * AtelierEngine nulls it in the same breath as skipping setupCampus.
  */
 export function setupSky(scene: THREE.Scene): void {
   const sky = canvasTexture(16, 256, ctx => {
@@ -49,15 +52,15 @@ export function setupSky(scene: THREE.Scene): void {
   scene.background = sky;
 
   new THREE.TextureLoader().load(
-    '/textures/atelier-panorama.jpg',
+    '/textures/background.png', // v4.2.5 — static 2D backdrop card (2:1 equirect photo)
     tex => {
       tex.mapping = THREE.EquirectangularReflectionMapping;
-      tex.colorSpace = THREE.SRGBColorSpace; // JPEG is sRGB — critical, else it washes out
+      tex.colorSpace = THREE.SRGBColorSpace; // sRGB source — critical, else it washes out
       scene.background = tex;
       sky.dispose(); // fallback gradient no longer needed
     },
     undefined,
-    () => console.warn('🖼️ atelier-panorama.jpg failed to load — procedural gradient sky stays.'),
+    () => console.warn('🖼️ background.png failed to load — procedural gradient sky stays.'),
   );
 
   scene.fog = new THREE.Fog(0xD9A06B, 95, 190); // energy fix: near pushed past the building (was 60) — no more haze wash on zoom-out

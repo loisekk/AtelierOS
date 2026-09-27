@@ -95,7 +95,6 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
 .hud-tr { top: 74px; right: 328px; }
 .hud-bl { bottom: 14px; left: 268px; }
 .hud-bc { bottom: 14px; left: 50%; transform: translateX(-50%); }
-.hud-tl { top: 14px; left: 14px; } .hud-tr { top: 14px; right: 14px; } .hud-bl { bottom: 14px; left: 14px; } .hud-bc { bottom: 14px; left: 50%; transform: translateX(-50%); }
 
 .stat-row { display: flex; justify-content: space-between; align-items: baseline; padding: 5px 0; }
 .stat-label { font-size: 11.5px; color: var(--charcoal-3); font-weight: 500; }

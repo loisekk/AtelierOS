@@ -503,6 +503,55 @@
         bar. Verified: computed scrollbarWidth none on .floating-left.
       · Gates: bun run typecheck 0 · bun run lint 0. Visual: clean panel
         edge, free-orbit rear view of the diorama renders correctly.
+- [x] Phase 13 v4.2.5 — static 2D-backdrop mode + camera-underside plug
+      (same session; gates bun run typecheck 0 · bun run lint 0):
+      · BACKDROP SWAPPED to a static photo card (user-supplied
+        public/textures/background.png, 2:1 equirect). CampusEnvironment's
+        setupSky() now streams background.png instead of the procedural
+        atelier-panorama.jpg; the procedural gradient still paints first so
+        pre-GLB frames never flash black. GOTCHA: that asset was UNTRACKED —
+        it ships in the same commit, or a deployed build silently falls back
+        to the gradient sky.
+      · CAMPUS + FOG GATED OFF (USE_2D_BACKDROP in AtelierEngine): a lit
+        campus lot cannot sit on a photographic horizon, and the matching fog
+        existed ONLY to dissolve that lot — so setupCampus() is skipped and
+        scene.fog nulled in the same branch. setupSky() still authors the fog
+        for world mode; the gate is what removes it. Verified live:
+        scene.getObjectByName('campus') === null, scene.fog === null.
+      · BACKDROP PINNED (the headline): animate() writes
+        scene.backgroundRotation.y = BACKDROP_PIN_SIGN *
+        controls.getAzimuthalAngle(). The sign was DERIVED, not guessed —
+        three sets the uniform as R(−φ) and the CubeUV shader samples
+        backgroundRotation * vWorldDirection, so s=+1 freezes, s=−1 swings at
+        2×, s=0 slides at 1× (convention is invariant, so no flip-and-see).
+        Confirmed empirically: scripted 0.8 rad orbit with the 195 scene
+        geometries hidden → 0 / 22,600 samples differed (perfect
+        cancellation). Re-verified at a fresh pose later: backgroundRotation.y
+        tracks azimuth to 5 dp with residual 0.000000 over 3 consecutive
+        frames WHILE the idle drift spun — the pin cancels motion
+        continuously, not merely at rest. Probe trap: THREE.Texture.rotation
+        is a scalar UV yaw, NOT an Euler — reading background.rotation.y is
+        meaningless; the live property is scene.backgroundRotation (Euler).
+      · ORBIT UNDERSIDE PLUGGED: relaxOrbitLimits() (TOP view only — 'ceo'
+        goes through applyOrbitLimits()) held maxPolarAngle = Math.PI, a full
+        hemisphere BELOW the target, so a hard drag could park the camera
+        under the slab staring at the building's underside/void. Now clamped
+        to CAMERA_LIMITS.maxPolarAngle. Verified: the top-view ortho rig read
+        180° → 87.30°, and a forced polar 170° (y = −39.4) re-clamped to
+        y = +11.89.
+      · FLOOR CLAMP HARDENED: the per-frame camera rescue is now gated on
+        this.camera === this.activeCamera, so it only touches the RENDERED
+        camera — the parked rig needs no rescue. Verified better than
+        expected: a forcing test that drove the camera to y = −50 was rescued
+        to y = +25.19.
+      · HUD CSS DEDUPED: index.css carried a second, older .hud-* one-liner
+        (top:14px / left:14px — the pre-shell anchors that collide with the
+        floating panels) sitting after the retargeted 74px / 268px rules.
+        Deleted; exactly 4 .hud-* rules remain (one each), file 198 lines.
+      · Evidence: .verify/backdrop-v425-0{2b,3,4,5,6}-*.png — pin A/B at
+        azimuth 0 vs 0.8 rad, final office, wide free-orbit. Console noise in
+        the test session (6 → 79 errors) is entirely pre-existing gateway
+        WebSocket refusals (Python backend not running), not these edits.
 
 ## Decisions & conventions worth keeping
 - ZONES-first layout: ROOM_ZONES is the only valid ruler; MEASURED rects are
