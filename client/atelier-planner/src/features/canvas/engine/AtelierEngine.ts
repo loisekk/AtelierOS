@@ -45,20 +45,11 @@ const TURNTABLE_IDLE_MS = 10_000;
 /** autoRotateSpeed (OrbitControls scale: 2.0 = 30 s/turn). */
 const TURNTABLE_SPEED = 0.55;
 
-/** v4.2.5 — 2D-backdrop mode. The sky is a STATIC photo card
- *  (public/textures/background.png, equirect) hung behind the diorama: the
- *  camera orbits while the backdrop hangs still — a filmed turntable, not a
- *  world view. Consequences:
- *   • campus suppressed — a photo-grounded lot fights a photographic horizon;
- *   • fog suppressed — it only ever existed to dissolve the campus ground;
- *   • animate() pins scene.backgroundRotation to the orbit azimuth so the
- *     photo never slides across the frame (see BACKDROP_PIN_SIGN).
- *  false = the phase-13 world back: campus + fog + world-locked sky. */
-const USE_2D_BACKDROP = true;
-
-/** Sign of the backdrop pin (see animate). The wrong sign makes the photo
- *  swing at 2× the orbit rate instead of hanging still — flip, don't reason. */
-const BACKDROP_PIN_SIGN = 1;
+/** Manual-camera mode (user decision): the building and the world never
+ *  self-animate; only the user's drag moves the view. The idle turntable
+ *  stays behind setTurntable(on) for a later UI toggle — flip this const
+ *  (or call the method) to restore the slow 10 s idle spin. */
+const ALLOW_IDLE_SPIN = false;
 
 interface EngineCallbacks {
   onStatsUpdate: (items: PlacedItemMeta[]) => void;
@@ -73,6 +64,9 @@ export class AtelierEngine {
   private camera: THREE.PerspectiveCamera;
   private orthoCamera: THREE.OrthographicCamera;
   private activeCamera: THREE.Camera;
+  /** Idle-turntable switch (default = ALLOW_IDLE_SPIN). Off: the world is
+   *  fully static — only the camera moves. Toggle via setTurntable(on). */
+  private idleSpinEnabled = ALLOW_IDLE_SPIN;
   private renderer: THREE.WebGLRenderer;
   private postfx!: PostFX;
   private campus: CampusEnvironment | null = null;
@@ -243,15 +237,10 @@ export class AtelierEngine {
       // Phase 13 H3/I3 — sky-side campus (grass, trees, entrance walkway,
       // emissive path lights, contact shadow). Needs the loaded building for
       // its bbox, hence here — right after frameBuilding.
-      // v4.2.5 — 2D-backdrop mode skips it: a lit campus lot cannot sit on a
-      // photographic horizon, and the matching fog existed only to dissolve
-      // that lot — so both go, leaving plinth + backdrop.
-      if (USE_2D_BACKDROP) {
-        this.campus = null;
-        this.scene.fog = null;
-      } else {
-        this.campus = setupCampus(this.scene, building);
-      }
+      // v4.3 — restored unconditionally: with the idle spin gone the world is
+      // fully static, and the campus (grass, trees, walkway, path lights,
+      // contact shadow) supplies the real depth the backdrop used to fake.
+      this.campus = setupCampus(this.scene, building);
 
       WORLD.floorY = (building.userData.floorY as number) ?? 0;
       this.floor.position.y = WORLD.floorY;
@@ -1088,6 +1077,13 @@ export class AtelierEngine {
     this.controls.maxAzimuthAngle = Infinity;
   }
 
+  /** Runtime toggle for the idle turntable (future UI switch). Off (default,
+   *  ALLOW_IDLE_SPIN) = manual camera only: nothing self-animates. */
+  public setTurntable(on: boolean): void {
+    this.idleSpinEnabled = on;
+    if (!on) this.controls.autoRotate = false;
+  }
+
   public setView(view: 'office' | 'ceo' | 'command' | 'knowledge' | 'top') {
     this.view = view;
     // Turntable: a view switch is an interaction — stop the drift and restart
@@ -1205,6 +1201,7 @@ export class AtelierEngine {
    *  turntable. Any interaction ('start' listener) or view switch (setView)
    *  stops it. Other rigs are untouched. */
   private updateTurntable(): void {
+    if (!this.idleSpinEnabled) { this.controls.autoRotate = false; return; }
     if (this.view !== 'office') { this.controls.autoRotate = false; return; }
     if (performance.now() - this.lastInteraction < TURNTABLE_IDLE_MS) {
       this.controls.autoRotate = false;
@@ -1258,12 +1255,6 @@ export class AtelierEngine {
 
     this.updateTurntable(); // turntable B+ — idle drift along the office rail (must precede update)
     this.controls.update();
-    // v4.2.5 — 2D-backdrop pin: the photo backdrop must hang STILL while the
-    // camera orbits (the diorama turns in front of it, turntable-film style).
-    // Unpinned, the scene-locked sky slides across the frame with the orbit.
-    if (USE_2D_BACKDROP) {
-      this.scene.backgroundRotation.y = BACKDROP_PIN_SIGN * this.controls.getAzimuthalAngle();
-    }
     // Per-frame camera safety net (Camera boundary v1): even pan-drags that dodge
     // OrbitControls' spherical limits can never take the camera under the slab.
     // Only the RENDERED camera is clamped — the parked rig needs no rescue.

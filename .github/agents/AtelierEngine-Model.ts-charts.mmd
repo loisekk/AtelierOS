@@ -1,0 +1,54 @@
+---
+references:
+  - "File: /client/atelier-planner/src/data/models.ts"
+  - "File: /client/atelier-planner/src/features/canvas/engine/AtelierEngine.ts"
+generationTime: 2026-09-22T10:00:28.112Z
+---
+flowchart TD
+    A(["AtelierEngine constructor"]) --> B["Create Three.js scene, cameras, renderer, controls"]
+    B --> C["Initialize lighting, environment, plinth, floor, and managers"]
+    C --> D["Load building GLB asynchronously"]
+    D --> E{"Building loaded successfully?"}
+    E -->|Yes| F["Frame building and setup campus"]
+    E -->|No| G["Log loading error"]
+    F --> H["Create workstation registry"]
+    H --> I["autoFurnish selected layout preset"]
+    I --> J["Iterate layout entries"]
+    J --> K["placeItem furniture or agent"]
+    K --> L{"More layout entries?"}
+    L -->|Yes| J
+    L -->|No| M["Initialize labels, brain, and room boards"]
+
+    N(["User interaction"]) --> O{"Interaction type?"}
+    O -->|"Place item"| P["Create ghost item and update position"]
+    P --> Q["Pointer release"]
+    Q --> R["placeItem and update statistics"]
+    O -->|"Customize"| S["Select, drag, rotate, delete, or undo"]
+    S --> T["Update meshes, metadata, history, and workstations"]
+    O -->|"Agent action"| U["Update agent status, movement, logs, or meeting"]
+    U --> V["AgentController and ScreenManager update"]
+
+    W(["Animation loop"]) --> X["Update egress arrows, selection ring, HUD, agents, and brain"]
+    X --> Y["Update turntable and camera controls"]
+    Y --> Z["Render post-processing frame"]
+    Z --> W
+
+    AA(["Public commands"]) --> AB["Set view, preset, labels, validation, stats, export, or egress"]
+    AB --> AC["Update scene state and callbacks"]
+
+    AD(["dispose"]) --> AE["Remove listeners and cancel animation"]
+    AE --> AF["Dispose controls, post-processing, campus, scene resources, and renderer"]
+
+    subgraph Models["models.ts"]
+        BA["ModelOption interface"] --> BB["MODEL_REGISTRY"]
+        BC["HARNESS_OPTIONS"] --> BD["Available CLI harnesses"]
+    end
+
+    BB -.-> K
+    BD -.-> U
+    M --> W
+    G --> AG(["Initialization continues without building"])
+    R --> W
+    T --> W
+    V --> W
+    AC --> W
