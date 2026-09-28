@@ -83,6 +83,24 @@ flowchart LR
 
 <br/>
 
+## 🎬 See It In Action
+
+<div align="center">
+
+### 🧭 2D Plan View
+<img src="assets/2d-atelier-os.png" alt="Atelier OS 2D view" width="92%" />
+<br/><sub>Top-down layout of the HQ: rooms, zones and workstations at a glance.</sub>
+
+<br/><br/>
+
+### 🏢 3D Cinematic View
+<img src="assets/3d-model-atelierOS.png" alt="Atelier OS 3D model view" width="92%" />
+<br/><sub>The live 3D diorama: PBR materials, lighting and AI employees at their desks.</sub>
+
+</div>
+
+<br/>
+
 ## 🏗️ Architecture
 
 ```mermaid
