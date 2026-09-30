@@ -11,6 +11,7 @@ import { RightPanel } from '../features/workspace/components/RightPanel';
 import { AgentModal } from '../features/workspace/components/AgentModal';
 import { DispatchModal } from '../features/workspace/components/DispatchModal';
 import { RotationHud } from '../features/workspace/components/RotationHud';
+import { Office2DCanvas } from '../features/office2d';
 import { BOUNDS } from '../features/canvas/architecture/SpatialConfig';
 import type { AgentStatus, AgentConfig, Task } from '../features/ai-agents/types';
 
@@ -39,6 +40,10 @@ function App() {
   const dagStepsRef = useRef<DagStep[]>([]);
 
   const [view, setView] = useState<'office' | 'ceo' | 'command' | 'knowledge' | 'top'>('office');
+  // Phase 14 — presentation mode: '3d' (engine) | '2d' (architectural renderer).
+  // ViewMode NEVER touches app/engine state — it only swaps which renderer
+  // displays the SAME live office. Nothing resets on switch, by construction.
+  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
   const [labelsVisible, setLabelsVisible] = useState(true);
   const toggleLabels = useCallback(() => {
     setLabelsVisible(prev => {
@@ -200,10 +205,24 @@ function App() {
   const total = placedItems.reduce((s, i) => s + i.price, 0);
   const employees = placedItems.filter(i => i.role);
 
-  const handleView = (v: 'office' | 'ceo' | 'command' | 'knowledge' | 'top') => {
+  const handleView = (v: 'office' | 'ceo' | 'command' | 'knowledge' | 'top' | '2d') => {
+    if (v === '2d') {
+      setViewMode('2d');
+      engineRef.current?.setRenderingPaused(true); // sim keeps running; GPU skips the hidden canvas
+      return;
+    }
+    setViewMode('3d');
+    engineRef.current?.setRenderingPaused(false);
     setView(v);
     engineRef.current?.setView(v);
   };
+
+  /** 2D selection routes through the ENGINE as the single hub — same path as
+   *  3D clicks — so the selection ring, React selectedId, panels and both
+   *  renderers stay in sync with one call. */
+  const handle2DSelect = useCallback((id: string | null) => {
+    engineRef.current?.setSelected(id);
+  }, [engineRef]);
 
   const handleBrand = (c: string) => {
     setBrandColor(c);
@@ -343,9 +362,20 @@ function App() {
     // glass panels + HUD float above it. (The old flex-column shell crushed
     // the stage and stretched the panels to the full window.)
     <div className="workspace-full">
-      <div ref={containerRef} className="blueprint-grid stage-full" />
+      {/* 3D stage: NEVER unmounted — display:none only (unmount = engine
+          dispose = state reset). Engine + simulation keep running in 2D mode. */}
+      <div ref={containerRef} className={`blueprint-grid stage-full ${viewMode === '2d' ? 'stage-hidden' : ''}`} />
+      {viewMode === '2d' && (
+        <Office2DCanvas
+          engineRef={engineRef}
+          items={placedItems}
+          selectedId={selectedId}
+          labelsVisible={labelsVisible}
+          onSelect={handle2DSelect}
+        />
+      )}
       <TopBar
-        view={view} setView={handleView} brandColor={brandColor} setBrandColor={handleBrand}
+        view={view} viewMode={viewMode} setView={handleView} brandColor={brandColor} setBrandColor={handleBrand}
         toggleFire={handleToggleFire} fireActive={fireActive}
         openExport={() => setExportOpen(true)} openHelp={() => setHelpOpen(true)}
         openSettings={() => setSettingsOpen(true)} openDispatch={() => setDispatchModalOpen(true)}

@@ -101,6 +101,30 @@ export class AgentController {
     this.updateAgentStatus(agentId, 'idle');
   }
 
+  /** Phase 14 — live world positions for the 2D renderer (READ-ONLY).
+   *  getWorldPosition() is correct in BOTH states: seated (avatar is a child
+   *  of the desk group) and free/walking (child of the scene). */
+  public getAgentPositions() {
+    const p = new THREE.Vector3();
+    return this.placedItems
+      .filter(i => i.role)
+      .flatMap(i => {
+        const avatar = this.avatars.get(i.id);
+        if (!avatar) return [];
+        avatar.getWorldPosition(p);
+        return [{
+          id: i.id,
+          name: i.config?.name || i.name,
+          role: i.role,
+          status: i.status,
+          x: p.x,
+          z: p.z,
+          seated: avatar.parent !== this.scene,
+        }];
+      });
+  }
+
+
   public updateAgentStatus(id: string, status: AgentStatus, callbacks?: EngineCallbacksLike) {
     const item = this.placedItems.find(i => i.id === id);
     if (item) {

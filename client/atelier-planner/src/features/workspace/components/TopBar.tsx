@@ -1,7 +1,10 @@
 import React from 'react';
 
+export type ViewKey = 'office' | 'ceo' | 'command' | 'knowledge' | 'top' | '2d';
+export type ViewMode = '3d' | '2d';
+
 export const TopBar: React.FC<{ 
-  view: string; setView: (v: 'office' | 'ceo' | 'command' | 'knowledge' | 'top') => void;
+  view: ViewKey; viewMode: ViewMode; setView: (v: ViewKey) => void;
   brandColor: string; setBrandColor: (c: string) => void;
   toggleFire: () => void; fireActive: boolean;
   openExport: () => void; openHelp: () => void;
@@ -11,7 +14,12 @@ export const TopBar: React.FC<{
   toggleListening: () => void;
   labelsVisible: boolean;
   toggleLabels: () => void;
-}> = ({ view, setView, brandColor, setBrandColor, toggleFire, fireActive, openExport, openHelp, openSettings, openDispatch, isListening, toggleListening, labelsVisible, toggleLabels }) => {
+}> = ({ view, viewMode, setView, brandColor, setBrandColor, toggleFire, fireActive, openExport, openHelp, openSettings, openDispatch, isListening, toggleListening, labelsVisible, toggleLabels }) => {
+  // Phase 14 — 2D is a PRESENTATION mode, not a camera rig: the button swaps
+  // renderers; Office/CEO/Cmd are 3D rigs (clicking any of them from 2D
+  // returns to 3D at that rig). 'top' (ortho dollhouse) remains a valid rig —
+  // reachable via the HUD Fly button / LeftPanel — but the chip now means 2D.
+  const active = (v: ViewKey) => (v === '2d' ? viewMode === '2d' : viewMode === '3d' && view === v);
   return (
     // Phase 13 G — fully transparent top bar: floating glass chips, no bar background.
     // The 3D office canvas runs behind it (full-bleed stage).
@@ -48,9 +56,9 @@ export const TopBar: React.FC<{
             ['office', 'fa-building', 'Office'],
             ['ceo', 'fa-user-tie', 'CEO'],
             ['command', 'fa-chart-network', 'Cmd'],
-            ['top', 'fa-vector-square', '2D'],
+            ['2d', 'fa-vector-square', '2D'],
           ] as const).map(([v, icon, label]) => (
-            <button key={v} style={{ padding: '5px 11px', border: 'none', background: view === v ? 'var(--charcoal)' : 'transparent', color: view === v ? '#fff' : 'var(--charcoal-3)', fontSize: '11px', borderRadius: '7px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }} onClick={() => setView(v)}>
+            <button key={v} style={{ padding: '5px 11px', border: 'none', background: active(v) ? 'var(--charcoal)' : 'transparent', color: active(v) ? '#fff' : 'var(--charcoal-3)', fontSize: '11px', borderRadius: '7px', cursor: 'pointer', fontWeight: 600, transition: 'all 0.2s' }} onClick={() => setView(v)}>
               <i className={`fa-solid ${icon} text-[10px]`}></i> {label}
             </button>
           ))}

@@ -77,6 +77,10 @@ export class AtelierEngine {
   // ── Turntable: idle auto-rotate state (default office view only) ──
   private lastInteraction = performance.now();
 
+  /** Phase 14 — 2D mode: skip GPU render while the 3D canvas is hidden.
+   *  Simulation (agents, walking, meeting timers) keeps running. */
+  private renderingPaused = false;
+
   private buildingRoot!: THREE.Group;
   private floor!: THREE.Mesh;
   private selectionRing!: THREE.Mesh;
@@ -630,6 +634,14 @@ export class AtelierEngine {
   }
 
   public updateDAG(steps: DagStep[]) { this.screenManager.updateDAG(this.scene, steps); }
+
+  /** Phase 14 — pause/resume the composer render (2D mode hides the canvas). */
+  public setRenderingPaused(paused: boolean) { this.renderingPaused = paused; }
+
+  /** Phase 14 — read-only live agent positions for the 2D renderer.
+   *  getWorldPosition() refreshes the parent chain itself, so positions are
+   *  current even while the 3D composer is paused (2D mode). */
+  public getAgentSnapshot() { return this.agentController.getAgentPositions(); }
   public updateAgentLog(agentId: string, log: string) {
     const mesh = this.meshes.get(agentId); if (mesh) this.screenManager.updateAgentLog(mesh, log);
     const item = this.placedItems.find(i => i.id === agentId);
@@ -1264,7 +1276,7 @@ export class AtelierEngine {
     // v4.2.4 — banners re-anchor every frame so they stay pinned to their
     // room's top edge under ANY camera (parallax-compensated ground targets).
     if (this.roomLabelsGroup) updateBannerPlacement(this.roomLabelsGroup, this.activeCamera, WORLD.floorY);
-    this.postfx.render(); // Phase 13 H1 — composer render (bloom + tonemapped output)
+    if (!this.renderingPaused) this.postfx.render(); // 13 H1 + 14: skip GPU work while hidden in 2D mode
   };
 
   public resize() {

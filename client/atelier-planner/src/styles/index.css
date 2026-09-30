@@ -196,3 +196,11 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
 .stage-hud-layer .hud, .stage-hud-layer > * { pointer-events: auto; }
 
 .panel-section-title { font-family: 'Archivo', sans-serif; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.14em; color: var(--charcoal-3); margin: 0 0 10px; }
+
+/* ══════════════════════════════════════════════════════════════════
+   Phase 14 — 2D Office mode (architectural renderer)
+   ══════════════════════════════════════════════════════════════════ */
+.stage-hidden { display: none; } /* 3D canvas hidden — NEVER unmounted */
+.office2d-root { position: absolute; inset: 0; z-index: 0; background: var(--bg); cursor: grab; }
+.office2d-root:active { cursor: grabbing; }
+.office2d-root canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
