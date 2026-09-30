@@ -3,21 +3,98 @@ import { roomBannerFor } from '../../../canvas/architecture/roomLabels';
 import { P2D, ROOM_FLOOR_2D } from '../theme';
 import type { Camera2D } from '../Camera2D';
 import type { Office2DFrame } from '../../types';
+import { paintWalls, ROTUNDA_R } from './walls';
 
-/** Brain rotunda — measured GLB geometry (BRAIN_ANCHOR + outer ring R≈6.1),
- *  NOT the zone rect: the rect's center sits inside the rotunda wall and must
- *  never be used for anything anchored (SpatialConfig's own warning). */
-const ROTUNDA_R = 6.1;
+// ── paper grain: one seeded offscreen noise tile, created lazily ──
+let grain: CanvasPattern | null = null;
+function grainPattern(ctx: CanvasRenderingContext2D): CanvasPattern | null {
+  if (grain) return grain;
+  const c = document.createElement('canvas');
+  c.width = c.height = 160;
+  const g = c.getContext('2d');
+  if (!g) return null;
+  const img = g.createImageData(160, 160);
+  let seed = 1337; // stable sheet texture across reloads
+  const rnd = () => (seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296;
+  for (let i = 0; i < 160 * 160; i++) {
+    const a = rnd();
+    if (a < 0.82) continue;                                  // sparse — paper, not sandpaper
+    const p = i * 4;
+    img.data[p] = 77; img.data[p + 1] = 56; img.data[p + 2] = 42;
+    img.data[p + 3] = Math.round(((a - 0.82) / 0.18) * 18); // ≤ ~7% alpha speckle
+  }
+  g.putImageData(img, 0, 0);
+  grain = ctx.createPattern(c, 'repeat');
+  return grain;
+}
 
-/** Architecture layer — warm illustrated plan: paper, world-aligned drafting
- *  grid, per-room floor tints, ink room outlines, banner labels, and the
- *  circular brain chamber. Pure draw — reads state, writes nothing. */
+/** Sheet dressing — screen-fixed chrome that never covers the plan:
+ *  title block (top-left, clear of the floating panels), north arrow +
+ *  zoom-honest scale bar (bottom-left band). −Z is north on this plan
+ *  (the reception gate faces east/+X, per the v1.3 zone table). */
+function paintDressing(ctx: CanvasRenderingContext2D, cam: Camera2D, _W: number, H: number) {
+  ctx.save();
+  ctx.strokeStyle = P2D.ink; ctx.fillStyle = P2D.ink;
+
+  // Title block — top-left, right of the LeftPanel column
+  ctx.textAlign = 'left'; ctx.textBaseline = 'alphabetic';
+  ctx.font = '700 11px Archivo, sans-serif';
+  ctx.fillText('ATELIER HQ', 272, 84);
+  ctx.font = '9px Manrope, sans-serif';
+  ctx.fillStyle = P2D.sub;
+  ctx.fillText('LIVE OPERATING PLAN · CEO EDITION', 272, 97);
+
+  // North arrow
+  ctx.fillStyle = P2D.ink;
+  const nx = 300, ny = H - 52;
+  ctx.lineWidth = 1.4;
+  ctx.beginPath(); ctx.arc(nx, ny, 13, 0, Math.PI * 2); ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(nx, ny - 10); ctx.lineTo(nx - 4, ny + 5); ctx.lineTo(nx, ny + 1); ctx.lineTo(nx + 4, ny + 5);
+  ctx.closePath(); ctx.fill();
+  ctx.font = '700 9px Archivo, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText('N', nx, ny - 22);
+
+  // Scale bar — zoom-aware: its pixel length is always an honest 5 world meters
+  const m = cam.scale;
+  const bx = nx + 32, by = H - 48;
+  ctx.textBaseline = 'alphabetic'; ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(bx, by); ctx.lineTo(bx + 5 * m, by);
+  for (let i = 0; i <= 5; i++) {
+    ctx.moveTo(bx + i * m, by - (i % 2 ? 3 : 5));
+    ctx.lineTo(bx + i * m, by + (i % 2 ? 3 : 5));
+  }
+  ctx.stroke();
+  ctx.font = '9px Manrope, sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('0', bx - 3, by + 15);
+  ctx.fillText('5 m', bx + 5 * m - 8, by + 15);
+  ctx.restore();
+}
+
+/**
+ * Architecture layer v2 (14.2) — the illustrated plan: warm paper, drafting
+ * grid, seeded grain, building drop-shadow, per-room floor tints, poché
+ * walls with door swings (./walls), rotunda chamber, vignette, banner
+ * labels, and sheet dressing. Pure draw — reads state, writes nothing.
+ */
 export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, f: Office2DFrame): void {
   const W = cam.width, H = cam.height;
 
-  // ── Paper + drafting grid (world-aligned → pans with the plan) ──
+  // ── paper ──
   ctx.fillStyle = P2D.paper;
   ctx.fillRect(0, 0, W, H);
+
+  // ── building drop shadow (the plan sits ON the sheet) ──
+  ctx.save();
+  ctx.shadowColor = 'rgba(60, 40, 20, 0.30)';
+  ctx.shadowBlur = 26; ctx.shadowOffsetX = 5; ctx.shadowOffsetY = 10;
+  ctx.fillStyle = P2D.paper;
+  ctx.fillRect(cam.toScreenX(BOUNDS.minX), cam.toScreenY(BOUNDS.minZ),
+    (BOUNDS.maxX - BOUNDS.minX) * cam.scale, (BOUNDS.maxZ - BOUNDS.minZ) * cam.scale);
+  ctx.restore();
+
+  // ── drafting grid (world-aligned → the plan slides, the sheet stays) ──
   ctx.strokeStyle = P2D.grid;
   ctx.lineWidth = 1;
   const step = 2;
@@ -31,37 +108,27 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
   }
   ctx.stroke();
 
-  // ── Building envelope — thick ink outline ──
-  ctx.strokeStyle = P2D.ink;
-  ctx.lineWidth = 4;
-  ctx.strokeRect(
-    cam.toScreenX(BOUNDS.minX), cam.toScreenY(BOUNDS.minZ),
-    (BOUNDS.maxX - BOUNDS.minX) * cam.scale, (BOUNDS.maxZ - BOUNDS.minZ) * cam.scale,
-  );
+  // sheet grain (screen-fixed — the PAPER is the medium)
+  const gp = grainPattern(ctx);
+  if (gp) { ctx.fillStyle = gp; ctx.fillRect(0, 0, W, H); }
 
-  // ── Room floors + inner walls (brain chamber drawn as rotunda below) ──
+  // ── room floors (walls own ALL linework now) ──
   for (const z of ROOM_ZONES) {
-    if (z.id === 'brain_chamber') continue;
-    const x0 = cam.toScreenX(z.minX), y0 = cam.toScreenY(z.minZ);
-    const w = (z.maxX - z.minX) * cam.scale, h = (z.maxZ - z.minZ) * cam.scale;
+    if (z.id === 'brain_chamber') continue; // the rotunda floor is its own circle
     ctx.globalAlpha = 0.55;
     ctx.fillStyle = ROOM_FLOOR_2D[z.id] ?? '#C7A98D';
-    ctx.fillRect(x0, y0, w, h);
-    ctx.globalAlpha = 1;
-    ctx.strokeStyle = P2D.ink;
-    ctx.lineWidth = 2.5;
-    ctx.strokeRect(x0, y0, w, h);
+    ctx.fillRect(cam.toScreenX(z.minX), cam.toScreenY(z.minZ),
+      (z.maxX - z.minX) * cam.scale, (z.maxZ - z.minZ) * cam.scale);
   }
+  ctx.globalAlpha = 1;
 
-  // ── CEO Brain rotunda — circular chamber, concentric rings, violet core ──
+  // ── CEO Brain rotunda floor + dais rings + core ──
   const bx = cam.toScreenX(BRAIN_ANCHOR.x), by = cam.toScreenY(BRAIN_ANCHOR.z);
   const r = ROTUNDA_R * cam.scale;
   ctx.globalAlpha = 0.6;
   ctx.fillStyle = ROOM_FLOOR_2D.brain_chamber;
   ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.fill();
   ctx.globalAlpha = 1;
-  ctx.strokeStyle = P2D.ink; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.arc(bx, by, r, 0, Math.PI * 2); ctx.stroke();
   ctx.strokeStyle = P2D.inkSoft; ctx.lineWidth = 1;
   for (const k of [0.78, 0.5]) {
     ctx.beginPath(); ctx.arc(bx, by, r * k, 0, Math.PI * 2); ctx.stroke();
@@ -69,13 +136,24 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
   ctx.fillStyle = P2D.brainCore; // 14.4: pulse from live Brain state
   ctx.beginPath(); ctx.arc(bx, by, Math.max(3, r * 0.22), 0, Math.PI * 2); ctx.fill();
 
-  // ── Room labels — banner text, fixed screen size, zoom-gated subtitles ──
+  // ── walls, partitions, door swings (14.2 — data-derived, see ./walls) ──
+  paintWalls(ctx, cam);
+
+  // ── vignette ──
+  const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.38, W / 2, H / 2, Math.max(W, H) * 0.72);
+  vg.addColorStop(0, 'rgba(77,56,42,0)');
+  vg.addColorStop(1, 'rgba(77,56,42,0.07)');
+  ctx.fillStyle = vg;
+  ctx.fillRect(0, 0, W, H);
+
+  // ── labels (brain label anchored INSIDE the ring — was dead space in 14.1) ──
   if (f.labelsVisible) {
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     for (const z of ROOM_ZONES) {
       const banner = roomBannerFor(z.id);
-      const cx = cam.toScreenX((z.minX + z.maxX) / 2);
-      const cy = cam.toScreenY(z.id === 'brain_chamber' ? z.minZ + 1.2 : (z.minZ + z.maxZ) / 2);
+      const isBrain = z.id === 'brain_chamber';
+      const cx = cam.toScreenX(isBrain ? BRAIN_ANCHOR.x : (z.minX + z.maxX) / 2);
+      const cy = cam.toScreenY(isBrain ? BRAIN_ANCHOR.z - 3.4 : (z.minZ + z.maxZ) / 2);
       ctx.font = '700 11px Archivo, sans-serif';
       ctx.fillStyle = P2D.label;
       ctx.fillText((banner?.text ?? z.label).toUpperCase(), cx, cy - 6);
@@ -86,4 +164,7 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
       }
     }
   }
+
+  // ── sheet dressing (title block, north arrow, live scale bar) ──
+  paintDressing(ctx, cam, W, H);
 }
