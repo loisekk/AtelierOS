@@ -5,6 +5,8 @@ import { useAtelier } from '../features/workspace/hooks/useAtelier';
 import { useGateway } from '../features/workspace/hooks/useGateway';
 import type { GatewayMessage } from '../features/workspace/hooks/useGateway';
 import { useVoice } from '../features/workspace/hooks/useVoice';
+import { useAgentSpeech } from '../features/workspace/hooks/useAgentSpeech';
+import { routeVoiceCommand } from '../features/workspace/voice/voiceCommands';
 import { TopBar } from '../features/workspace/components/TopBar';
 import { LeftPanel } from '../features/workspace/components/LeftPanel';
 import { RightPanel } from '../features/workspace/components/RightPanel';
@@ -60,6 +62,8 @@ function App() {
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [isCustomizing, setIsCustomizing] = useState(false);
+  // Phase 15 — VOICE COMMAND card mic state: 'idle' | 'listening' | 'processing' | 'speaking'
+  const [voiceProcessing, setVoiceProcessing] = useState(false);
 
   const [agentModalOpen, setAgentModalOpen] = useState(false);
   const [hiringType, setHiringType] = useState<string | null>(null);
@@ -155,6 +159,9 @@ function App() {
   // ── Gateway FIRST, so everything below can safely use sendMessage ──
   const { isConnected, sendMessage } = useGateway(handleGatewayMessage);
 
+  // Phase 15B — agent speech (queue-based synthesis, global mute).
+  const { speak, muted: speechMuted, setMuted: setSpeechMuted, speaking: agentSpeaking } = useAgentSpeech();
+
   const handleDispatch = useCallback((taskData: Omit<Task, 'id' | 'status' | 'createdAt'>) => {
     const newTask: Task = {
       ...taskData,
@@ -170,13 +177,35 @@ function App() {
   const handleTranscript = useCallback((text: string) => {
     showToast(`Heard: "${text}"`);
     const employees = placedItems.filter(i => i.role);
+
+    // Phase 15A — the router gets first refusal; only unhandled free speech
+    // falls through to the legacy dispatch-to-first-employee path.
+    setVoiceProcessing(true);
+    window.setTimeout(() => setVoiceProcessing(false), 700);
+    const handled = routeVoiceCommand(text, {
+      employees,
+      dispatch: (prompt, assigneeIds) => handleDispatch({ prompt, assigneeIds, priority: 'high' }),
+      engine: engineRef.current,
+      // Inline mirror of handleView's 3D branch (handleView is declared
+      // below this callback — referencing it here would hit the TDZ).
+      setView: (v) => {
+        setViewMode('3d');
+        engineRef.current?.setRenderingPaused(false);
+        setView(v);
+        engineRef.current?.setView(v);
+      },
+      speak,
+      toast: showToast,
+    });
+    if (handled) return;
+
     if (employees.length > 0) {
       handleDispatch({ prompt: text, assigneeIds: [employees[0].id], priority: 'high' });
       showToast(`Task dispatched via voice!`);
     } else {
       showToast('Hire an employee first!');
     }
-  }, [placedItems, handleDispatch, showToast]);
+  }, [placedItems, handleDispatch, showToast, speak, engineRef]);
 
   const { isListening, startListening, stopListening, getAudioData } = useVoice(handleTranscript);
 
@@ -470,6 +499,10 @@ function App() {
           isListening={isListening}
           toggleListening={toggleListening}
           getAudioData={getAudioData}
+          voiceProcessing={voiceProcessing}
+          agentSpeaking={agentSpeaking}
+          speechMuted={speechMuted}
+          toggleSpeechMuted={() => setSpeechMuted(m => !m)}
           tasks={tasks}
         />
       </div>

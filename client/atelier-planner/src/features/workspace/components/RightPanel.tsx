@@ -16,6 +16,11 @@ interface RightPanelProps {
   isListening: boolean;
   toggleListening: () => void;
   getAudioData: () => Uint8Array | null;
+  /** Phase 15 — VOICE COMMAND card mic state machine. */
+  voiceProcessing: boolean;
+  agentSpeaking: boolean;
+  speechMuted: boolean;
+  toggleSpeechMuted: () => void;
   tasks: Task[];
 }
 
@@ -55,7 +60,7 @@ const VoiceWave: FC<{ isListening: boolean; getAudioData: () => Uint8Array | nul
   );
 };
 
-export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId, maxCapacity, roomArea, openCost, onStatusChange, onConfigure, onWalkTo, brainResponses, isListening, toggleListening, getAudioData, tasks }) => {
+export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId, maxCapacity, roomArea, openCost, onStatusChange, onConfigure, onWalkTo, brainResponses, isListening, toggleListening, getAudioData, voiceProcessing, agentSpeaking, speechMuted, toggleSpeechMuted, tasks }) => {
   const seats = placedItems.reduce((s, i) => s + i.seats, 0);
   const total = placedItems.reduce((s, i) => s + i.price, 0);
   const pct = maxCapacity > 0 ? Math.min(100, Math.round((seats / maxCapacity) * 100)) : 0;
@@ -128,20 +133,48 @@ export const RightPanel: FC<RightPanelProps> = ({ mode, placedItems, selectedId,
 
         <div className="glass-card">
           <div className="panel-section-title">Voice Command</div>
-          <div className="flex items-center gap-2 mb-2">
-            <button
-              className={`btn ${isListening ? 'active' : ''}`}
-              style={isListening ? { background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' } : undefined}
-              onClick={toggleListening}
-            >
-              <i className={`fa-solid ${isListening ? 'fa-wave-square' : 'fa-microphone'} text-[11px]`}></i>
-              <span>{isListening ? 'Listening…' : 'Speak'}</span>
-            </button>
-            <span className="text-[10px] font-mono truncate" style={{ color: 'var(--charcoal-3)' }}>
-              {isListening ? 'Say something to your AI team' : 'Tap to talk'}
-            </span>
-          </div>
-          <VoiceWave isListening={isListening} getAudioData={getAudioData} />
+          {/* Phase 15 — mic state machine: idle → listening → processing → speaking */}
+          {(() => {
+            const micState = agentSpeaking ? 'speaking' : voiceProcessing ? 'processing' : isListening ? 'listening' : 'idle';
+            const hint =
+              micState === 'listening' ? 'Say something to your AI team' :
+              micState === 'processing' ? 'Routing command…' :
+              micState === 'speaking' ? 'Agent is replying…' : 'Tap to talk';
+            const stateColor =
+              micState === 'listening' ? 'var(--danger)' :
+              micState === 'processing' ? 'var(--warn)' :
+              micState === 'speaking' ? '#49D8EC' : 'var(--charcoal-3)';
+            return (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <button
+                    className={`btn ${isListening ? 'active' : ''}`}
+                    style={isListening ? { background: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' } : undefined}
+                    onClick={toggleListening}
+                  >
+                    <i className={`fa-solid ${isListening ? 'fa-wave-square' : 'fa-microphone'} text-[11px]`}></i>
+                    <span>{isListening ? 'Listening…' : 'Speak'}</span>
+                  </button>
+                  <button
+                    className="btn btn-icon"
+                    title={speechMuted ? 'Unmute agent speech' : 'Mute agent speech'}
+                    onClick={toggleSpeechMuted}
+                    style={speechMuted ? { color: 'var(--danger)' } : undefined}
+                  >
+                    <i className={`fa-solid ${speechMuted ? 'fa-volume-xmark' : 'fa-volume-high'} text-[11px]`}></i>
+                  </button>
+                  <span className="text-[10px] font-mono truncate" style={{ color: 'var(--charcoal-3)' }}>
+                    {hint}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="w-1.5 h-1.5 rounded-full" style={{ background: stateColor, opacity: micState === 'idle' ? 0.4 : 1 }}></span>
+                  <span className="text-[9px] uppercase font-semibold tracking-wider" style={{ color: stateColor }}>{micState}</span>
+                </div>
+                <VoiceWave isListening={isListening} getAudioData={getAudioData} />
+              </>
+            );
+          })()}
         </div>
 
         <div className="glass-card">
