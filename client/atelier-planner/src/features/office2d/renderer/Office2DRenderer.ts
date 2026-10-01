@@ -1,16 +1,16 @@
-import type { Agent2D, Office2DFrame } from '../types';
+import type { Office2DFrame } from '../types';
 import { Camera2D } from './Camera2D';
 import { paintArchitecture } from './painters/architecture';
 
 export interface Office2DRendererOptions {
   onSelect: (id: string | null) => void;
   /** Per-frame live agent positions — straight from the engine. */
-  getAgents: () => Agent2D[];
+  getAgents: () => Office2DFrame['agents'];
 }
 
-/** Static slice of the frame owned by React — agents arrive live instead
- *  (polled from the engine inside the rAF loop, never stored). */
-type Office2DStaticFrame = Omit<Office2DFrame, 'agents'>;
+/** Static slice of the frame owned by React — agents + t arrive live
+ *  instead (polled/clocked inside the rAF loop, never stored). */
+type Office2DStaticFrame = Omit<Office2DFrame, 'agents' | 't'>;
 
 /**
  * Phase 14 — Canvas-2D architectural renderer. Mirrors AtelierEngine's
@@ -40,7 +40,7 @@ export class Office2DRenderer {
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Office2DRenderer: 2D context unavailable');
     this.ctx = ctx;
-    this.frame = { items: [], selectedId: null, labelsVisible: true };
+    this.frame = { items: [], selectedId: null, labelsVisible: true, brainActive: false };
 
     canvas.addEventListener('pointerdown', this.onPointerDown);
     canvas.addEventListener('pointermove', this.onPointerMove);
@@ -80,12 +80,17 @@ export class Office2DRenderer {
     }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-    const f: Office2DFrame = { ...this.frame, agents: this.opts.getAgents() };
+    // Live frame: React state + per-frame agents + renderer clock (t).
+    // Animations NEVER depend on React re-renders — the rAF owns time.
+    const f: Office2DFrame = {
+      ...this.frame,
+      agents: this.opts.getAgents(),
+      t: performance.now() / 1000,
+    };
     paintArchitecture(this.ctx, this.cam, f);
     // 14.3 ✓ furniture symbols — composed inside paintArchitecture
-    //        (floors → furniture → walls → labels; ./painters/furniture)
-    // 14.4: paintAgents(ctx, cam, f)   — employees, dept rings, movement
-    // 14.5: hover/selection overlays + hitTest
+    // 14.4 ✓ live agents + Brain — composed inside paintArchitecture
+    // 14.5: hover/selection overlays + hitTest (employee → room → workstation)
   }
 
   private onPointerDown = (e: PointerEvent) => {

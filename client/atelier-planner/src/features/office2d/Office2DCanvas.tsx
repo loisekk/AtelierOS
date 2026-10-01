@@ -9,6 +9,8 @@ interface Office2DCanvasProps {
   items: PlacedItemMeta[];
   selectedId: string | null;
   labelsVisible: boolean;
+  /** Phase 14.4 — live Brain state (tasks running / HITL pending). */
+  brainActive: boolean;
   onSelect: (id: string | null) => void;
 }
 
@@ -18,7 +20,7 @@ interface Office2DCanvasProps {
  * state arrives via props or engine reads — so the view switch can never
  * reset tasks, agents, selection, or the backend connection.
  */
-export const Office2DCanvas: FC<Office2DCanvasProps> = ({ engineRef, items, selectedId, labelsVisible, onSelect }) => {
+export const Office2DCanvas: FC<Office2DCanvasProps> = ({ engineRef, items, selectedId, labelsVisible, brainActive, onSelect }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rendererRef = useRef<Office2DRenderer | null>(null);
 
@@ -41,8 +43,8 @@ export const Office2DCanvas: FC<Office2DCanvasProps> = ({ engineRef, items, sele
 
   // App state → renderer (no re-init; the rAF loop picks it up next frame).
   useEffect(() => {
-    rendererRef.current?.setFrame({ items, selectedId, labelsVisible });
-  }, [items, selectedId, labelsVisible]);
+    rendererRef.current?.setFrame({ items, selectedId, labelsVisible, brainActive });
+  }, [items, selectedId, labelsVisible, brainActive]);
 
   return (
     <div className="office2d-root">

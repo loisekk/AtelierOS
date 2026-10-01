@@ -233,6 +233,10 @@ function App() {
   const seats = placedItems.reduce((s, i) => s + i.seats, 0);
   const total = placedItems.reduce((s, i) => s + i.price, 0);
   const employees = placedItems.filter(i => i.role);
+  // Phase 14.4 — live Brain state for the 2D rotunda core: active while any
+  // task runs or a HITL approval pends. (DAG steps live in a ref, not state —
+  // tasks/approvalData are the React-visible truth of "the Brain is busy".)
+  const brainActive = tasks.some(t => t.status === 'running') || approvalData !== null;
 
   const handleView = (v: 'office' | 'ceo' | 'command' | 'knowledge' | 'top' | '2d') => {
     if (v === '2d') {
@@ -400,6 +404,7 @@ function App() {
           items={placedItems}
           selectedId={selectedId}
           labelsVisible={labelsVisible}
+          brainActive={brainActive}
           onSelect={handle2DSelect}
         />
       )}

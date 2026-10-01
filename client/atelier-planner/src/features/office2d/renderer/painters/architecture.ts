@@ -5,6 +5,7 @@ import type { Camera2D } from '../Camera2D';
 import type { Office2DFrame } from '../../types';
 import { paintWalls, ROTUNDA_R } from './walls';
 import { paintFurniture } from './furniture';
+import { paintAgents, paintBrain } from './agents';
 
 // ── paper grain: one seeded offscreen noise tile, created lazily ──
 let grain: CanvasPattern | null = null;
@@ -74,11 +75,13 @@ function paintDressing(ctx: CanvasRenderingContext2D, cam: Camera2D, _W: number,
 }
 
 /**
- * Architecture layer v3 — the illustrated plan: warm paper, drafting grid,
+ * Architecture layer v4 — the illustrated plan: warm paper, drafting grid,
  * seeded grain, building drop-shadow, per-room floor tints, furniture
  * symbols (14.3, ./furniture), poché walls with door swings (14.2,
- * ./walls), rotunda chamber, vignette, banner labels, sheet dressing.
- * Pure draw — reads state, writes nothing.
+ * ./walls), LIVE rotunda core + agents (14.4, ./agents — the live layer
+ * reads on top of the plan), vignette, banner labels, sheet dressing.
+ * Pure draw — reads state, writes nothing (app state, that is; the agents
+ * painter keeps a movement cache for heading derivation only).
  */
 export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, f: Office2DFrame): void {
   const W = cam.width, H = cam.height;
@@ -114,7 +117,7 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
   const gp = grainPattern(ctx);
   if (gp) { ctx.fillStyle = gp; ctx.fillRect(0, 0, W, H); }
 
-  // ── room floors (walls own ALL linework now) ──
+  // ── room floors (walls own ALL linework) ──
   for (const z of ROOM_ZONES) {
     if (z.id === 'brain_chamber') continue; // the rotunda floor is its own circle
     ctx.globalAlpha = 0.55;
@@ -124,7 +127,7 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
   }
   ctx.globalAlpha = 1;
 
-  // ── CEO Brain rotunda floor + dais rings + core ──
+  // ── CEO Brain rotunda floor + dais rings + LIVE core (14.4, ./agents) ──
   const bx = cam.toScreenX(BRAIN_ANCHOR.x), by = cam.toScreenY(BRAIN_ANCHOR.z);
   const r = ROTUNDA_R * cam.scale;
   ctx.globalAlpha = 0.6;
@@ -135,14 +138,16 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
   for (const k of [0.78, 0.5]) {
     ctx.beginPath(); ctx.arc(bx, by, r * k, 0, Math.PI * 2); ctx.stroke();
   }
-  ctx.fillStyle = P2D.brainCore; // 14.4: pulse from live Brain state
-  ctx.beginPath(); ctx.arc(bx, by, Math.max(3, r * 0.22), 0, Math.PI * 2); ctx.fill();
+  paintBrain(ctx, bx, by, r, f); // live pulse — idle breath / active neural orbits
 
   // ── furniture vocabulary (14.3 — per-catalog symbols, see ./furniture) ──
   paintFurniture(ctx, cam, f);
 
   // ── walls, partitions, door swings (14.2 — data-derived, see ./walls) ──
   paintWalls(ctx, cam);
+
+  // ── LIVE layer (14.4 — meeting halo, agents, streaks; see ./agents) ──
+  paintAgents(ctx, cam, f);
 
   // ── vignette ──
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.38, W / 2, H / 2, Math.max(W, H) * 0.72);

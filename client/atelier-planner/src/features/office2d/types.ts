@@ -12,11 +12,17 @@ export interface Agent2D {
   seated: boolean;
 }
 
-/** Everything the 2D renderer needs for one frame. Items/selection arrive
- *  from React props; agents arrive per-frame from the engine. */
+/** Everything the 2D renderer needs for one frame. Items/selection/brain
+ *  arrive from React props; agents + t arrive per-frame from the renderer. */
 export interface Office2DFrame {
   items: PlacedItemMeta[];
   agents: Agent2D[];
   selectedId: string | null;
   labelsVisible: boolean;
+  /** Phase 14.4 — CEO Brain live state: true while any task runs or a HITL
+   *  approval pends (drives the rotunda core pulse + neural orbits). */
+  brainActive: boolean;
+  /** Phase 14.4 — renderer clock in SECONDS. Drives every live animation in
+   *  the 2D view; supplied by Office2DRenderer's rAF loop, never by React. */
+  t: number;
 }
