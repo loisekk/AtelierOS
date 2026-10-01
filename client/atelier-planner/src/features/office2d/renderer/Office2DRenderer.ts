@@ -82,7 +82,8 @@ export class Office2DRenderer {
 
     const f: Office2DFrame = { ...this.frame, agents: this.opts.getAgents() };
     paintArchitecture(this.ctx, this.cam, f);
-    // 14.3: paintFurniture(ctx, cam, f) — per-catalog symbol vocabulary
+    // 14.3 ✓ furniture symbols — composed inside paintArchitecture
+    //        (floors → furniture → walls → labels; ./painters/furniture)
     // 14.4: paintAgents(ctx, cam, f)   — employees, dept rings, movement
     // 14.5: hover/selection overlays + hitTest
   }

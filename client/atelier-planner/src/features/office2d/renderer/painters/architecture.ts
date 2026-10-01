@@ -4,6 +4,7 @@ import { P2D, ROOM_FLOOR_2D } from '../theme';
 import type { Camera2D } from '../Camera2D';
 import type { Office2DFrame } from '../../types';
 import { paintWalls, ROTUNDA_R } from './walls';
+import { paintFurniture } from './furniture';
 
 // ── paper grain: one seeded offscreen noise tile, created lazily ──
 let grain: CanvasPattern | null = null;
@@ -73,10 +74,11 @@ function paintDressing(ctx: CanvasRenderingContext2D, cam: Camera2D, _W: number,
 }
 
 /**
- * Architecture layer v2 (14.2) — the illustrated plan: warm paper, drafting
- * grid, seeded grain, building drop-shadow, per-room floor tints, poché
- * walls with door swings (./walls), rotunda chamber, vignette, banner
- * labels, and sheet dressing. Pure draw — reads state, writes nothing.
+ * Architecture layer v3 — the illustrated plan: warm paper, drafting grid,
+ * seeded grain, building drop-shadow, per-room floor tints, furniture
+ * symbols (14.3, ./furniture), poché walls with door swings (14.2,
+ * ./walls), rotunda chamber, vignette, banner labels, sheet dressing.
+ * Pure draw — reads state, writes nothing.
  */
 export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, f: Office2DFrame): void {
   const W = cam.width, H = cam.height;
@@ -135,6 +137,9 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
   }
   ctx.fillStyle = P2D.brainCore; // 14.4: pulse from live Brain state
   ctx.beginPath(); ctx.arc(bx, by, Math.max(3, r * 0.22), 0, Math.PI * 2); ctx.fill();
+
+  // ── furniture vocabulary (14.3 — per-catalog symbols, see ./furniture) ──
+  paintFurniture(ctx, cam, f);
 
   // ── walls, partitions, door swings (14.2 — data-derived, see ./walls) ──
   paintWalls(ctx, cam);
