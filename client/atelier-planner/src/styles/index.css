@@ -92,6 +92,7 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
    right column 300, topbar 60) — anchored to the viewport they would
    collide with the panels/topbar. */
 .hud-tl { top: 74px; left: 268px; }
+
 .hud-tr { top: 74px; right: 328px; }
 .hud-bl { bottom: 14px; left: 268px; }
 .hud-bc { bottom: 14px; left: 50%; transform: translateX(-50%); }
@@ -201,6 +202,32 @@ body { font-family: 'Manrope', sans-serif; background: var(--bg); color: var(--c
    Phase 14 — 2D Office mode (architectural renderer)
    ══════════════════════════════════════════════════════════════════ */
 .stage-hidden { display: none; } /* 3D canvas hidden — NEVER unmounted */
-.office2d-root { position: absolute; inset: 0; z-index: 0; background: var(--bg); cursor: grab; }
+.office2d-root { position: absolute; inset: 0; background: var(--bg); cursor: grab; }
 .office2d-root:active { cursor: grabbing; }
 .office2d-root canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* -- Phase 14.5 -- 2D hover tooltip (DOM, for crisp typography) -- */
+.office2d-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: rgba(77, 56, 42, 0.95);
+  color: #F1E7D8;
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'Manrope', sans-serif;
+  box-shadow: 0 4px 16px rgba(60, 40, 20, 0.3);
+  z-index: 20;
+  white-space: nowrap;
+  transform: translateY(-100%);
+}
+.office2d-tooltip-title {
+  font-family: 'Archivo', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.office2d-tooltip-sub {
+  font-size: 9px;
+  opacity: 0.8;
+  margin-top: 2px;
+  letter-spacing: 0.05em;
+}

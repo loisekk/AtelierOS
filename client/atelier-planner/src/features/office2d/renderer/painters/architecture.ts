@@ -7,6 +7,12 @@ import { paintWalls, ROTUNDA_R } from './walls';
 import { paintFurniture } from './furniture';
 import { paintAgents, paintBrain } from './agents';
 
+/** '#RRGGBB' → 'rgba(r,g,b,a)' (the P2D palette is all 6-digit hex). */
+const rgba = (hex: string, a: number): string => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${(n >> 16) & 255}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
+};
+
 // ── paper grain: one seeded offscreen noise tile, created lazily ──
 let grain: CanvasPattern | null = null;
 function grainPattern(ctx: CanvasRenderingContext2D): CanvasPattern | null {
@@ -75,11 +81,12 @@ function paintDressing(ctx: CanvasRenderingContext2D, cam: Camera2D, _W: number,
 }
 
 /**
- * Architecture layer v4 — the illustrated plan: warm paper, drafting grid,
+ * Architecture layer v5 — the illustrated plan: warm paper, drafting grid,
  * seeded grain, building drop-shadow, per-room floor tints, furniture
  * symbols (14.3, ./furniture), poché walls with door swings (14.2,
  * ./walls), LIVE rotunda core + agents (14.4, ./agents — the live layer
- * reads on top of the plan), vignette, banner labels, sheet dressing.
+ * reads on top of the plan), the [Zones] overlay (14.5), vignette, banner
+ * labels, sheet dressing.
  * Pure draw — reads state, writes nothing (app state, that is; the agents
  * painter keeps a movement cache for heading derivation only).
  */
@@ -148,6 +155,26 @@ export function paintArchitecture(ctx: CanvasRenderingContext2D, cam: Camera2D, 
 
   // ── LIVE layer (14.4 — meeting halo, agents, streaks; see ./agents) ──
   paintAgents(ctx, cam, f);
+
+  // ── [Zones] overlay (14.5): dim the sheet, then mark every zone with a
+  //    tinted fill + dashed bounds. Screen-space (the sheet's own units —
+  //    a px dash is a px dash HERE, nothing is scaled) and VISUAL ONLY:
+  //    no application state is read or written by this block.
+  if (f.zonesVisible) {
+    ctx.fillStyle = 'rgba(241, 231, 216, 0.45)';
+    ctx.fillRect(0, 0, W, H);
+    ctx.setLineDash([6, 4]);
+    for (const z of ROOM_ZONES) {
+      const zx = cam.toScreenX(z.minX), zy = cam.toScreenY(z.minZ);
+      const zw = (z.maxX - z.minX) * cam.scale, zh = (z.maxZ - z.minZ) * cam.scale;
+      ctx.fillStyle = rgba(P2D.accent, 0.06);
+      ctx.fillRect(zx, zy, zw, zh);
+      ctx.strokeStyle = P2D.accent;
+      ctx.lineWidth = 1.5;
+      ctx.strokeRect(zx, zy, zw, zh);
+    }
+    ctx.setLineDash([]);
+  }
 
   // ── vignette ──
   const vg = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.38, W / 2, H / 2, Math.max(W, H) * 0.72);

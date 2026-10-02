@@ -19,6 +19,12 @@ export interface Office2DFrame {
   agents: Agent2D[];
   selectedId: string | null;
   labelsVisible: boolean;
+  /** Phase 14.5 — [Zones] overlay toggle: dims the plan and outlines every
+   *  zone rect. A visual layer only, no state mutation. */
+  zonesVisible: boolean;
+  /** Phase 14.5 — currently hovered agent id (drives the glyph highlight;
+   *  the tooltip itself is DOM, rendered by Office2DCanvas). */
+  hoveredId: string | null;
   /** Phase 14.4 — CEO Brain live state: true while any task runs or a HITL
    *  approval pends (drives the rotunda core pulse + neural orbits). */
   brainActive: boolean;
