@@ -63,3 +63,11 @@ htmlcov/
 
 # Browser test snapshots
 .playwright-mcp/
+
+# Floorplan debug / probe outputs - never commit
+.floorplan-*
+**/.floorplan-*
+client/atelier-planner/.floorplan-*
+client/atelier-planner/.glbmeta.json
+**/.glbmeta.json
+client/atelier-planner/.floorplan-probe.log

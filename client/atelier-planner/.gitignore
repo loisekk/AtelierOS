@@ -25,3 +25,8 @@ dist-ssr
 
 # Project memory not needed for the product 
 memory-bank/
+
+# Floorplan debug / probe outputs - never commit
+.floorplan-*
+.glbmeta.json
+.floorplan-probe.log
