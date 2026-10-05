@@ -5,7 +5,7 @@ import { ITEM_CATALOG } from '../../furniture/catalog';
 import type { PlacedItemMeta, AgentStatus, AgentConfig } from '../../ai-agents/types';
 import { addRoomLabels, updateBannerPlacement } from '../architecture/roomLabels';
 import { loadBuildingGLB } from '../architecture/BuildingLoader';
-import { BOUNDS, BRAIN_ANCHOR, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, V, WORLD } from '../architecture/SpatialConfig';
+import { BOUNDS, BRAIN_ANCHOR, BRAIN_DAIS_Y, BRAIN_FALLBACK, CAMERA_LIMITS, CAMERA_RIGS, EGRESS_POINTS, ROOM_ZONES, V, WORLD } from '../architecture/SpatialConfig';
 import { RoomBoards } from './RoomBoards';
 import { WorkstationRegistry } from '../architecture/WorkstationRegistry';
 import { debugDrawZones } from '../architecture/RoomScanner';
@@ -528,6 +528,102 @@ export class AtelierEngine {
     console.log(`Position: (X: ${pos.x.toFixed(1)}, Y: ${pos.y.toFixed(1)}, Z: ${pos.z.toFixed(1)})`);
     console.log(`Target: (X: ${target.x.toFixed(1)}, Y: ${target.y.toFixed(1)}, Z: ${target.z.toFixed(1)})`);
     console.log(`-------------------------`);
+  }
+
+  /** Phase 14.6 — REAL floor-plan probe (read-only diagnostic).
+   *  Walks the merged building mesh's vertex buffer and extracts the true
+   *  architecture the 2D renderer must trace:
+   *    · wall segments  — vertices in the level-1 wall band, clustered into
+   *      axis-aligned runs (the real partitions + envelope, not zone rects)
+   *    · rotunda circle — wall vertices near BRAIN_ANCHOR fitted to center+R
+   *    · floor plate    — vertices ON the floor plane: overall extent + the
+   *      real per-zone extents (the true room shapes)
+   *  Console: window.atelierEngine.probeFloorPlan() → JSON (clipboard too). */
+  public probeFloorPlan(q = 0.25) {
+    const lo = WORLD.floorY, hi = WORLD.floorY + 2.6; // level-1 wall band
+    const v = new THREE.Vector3();
+    const wall: { x: number; z: number }[] = [];
+    const floor: { x: number; z: number }[] = [];
+
+    this.buildingRoot.updateMatrixWorld(true);
+    this.buildingRoot.traverse(n => {
+      const mesh = n as THREE.Mesh;
+      if (!mesh.isMesh) return;
+      const pos = mesh.geometry.attributes.position;
+      if (!pos) return;
+      for (let i = 0; i < pos.count; i++) {
+        v.fromBufferAttribute(pos, i).applyMatrix4(mesh.matrixWorld);
+        if (v.y > lo + 0.1 && v.y <= hi) {
+          wall.push({ x: Math.round(v.x / q) * q, z: Math.round(v.z / q) * q });
+        } else if (Math.abs(v.y - lo) <= 0.06) {
+          floor.push({ x: Math.round(v.x / q) * q, z: Math.round(v.z / q) * q });
+        }
+      }
+    });
+
+    // ── rotunda fit: wall verts 5.4…6.8 from BRAIN_ANCHOR ──
+    const near = wall.filter(p => {
+      const d = Math.hypot(p.x - BRAIN_ANCHOR.x, p.z - BRAIN_ANCHOR.z);
+      return d >= 5.4 && d <= 6.8;
+    });
+    let rotunda: { cx: number; cz: number; r: number; n: number } | null = null;
+    if (near.length > 20) {
+      const cx = near.reduce((s, p) => s + p.x, 0) / near.length;
+      const cz = near.reduce((s, p) => s + p.z, 0) / near.length;
+      const r = near.reduce((s, p) => s + Math.hypot(p.x - cx, p.z - cz), 0) / near.length;
+      rotunda = { cx: +cx.toFixed(2), cz: +cz.toFixed(2), r: +r.toFixed(2), n: near.length };
+    }
+
+    // ── wall segments (rotunda excluded so the circle doesn't smear runs) ──
+    const inRotunda = (p: { x: number; z: number }) =>
+      rotunda && Math.hypot(p.x - rotunda.cx, p.z - rotunda.cz) < rotunda.r + 1.2;
+    const segments = (axis: 'x' | 'z') => {
+      const lines = new Map<number, number[]>();
+      for (const p of wall) {
+        if (inRotunda(p)) continue;
+        const key = axis === 'x' ? p.z : p.x;      // the fixed coordinate
+        const val = axis === 'x' ? p.x : p.z;      // along the run
+        const arr = lines.get(key) ?? [];
+        arr.push(val); lines.set(key, arr);
+      }
+      const out: [number, number, number, number][] = [];
+      for (const [key, vals] of lines) {
+        if (vals.length < 2) continue;
+        vals.sort((a, b) => a - b);
+        let start = vals[0];
+        for (let i = 1; i <= vals.length; i++) {
+          if (i === vals.length || vals[i] - vals[i - 1] > 2 * q) {
+            if (vals[i - 1] - start >= 0.5) out.push([key, start, vals[i - 1], vals.length]);
+            start = vals[i];
+          }
+        }
+      }
+      return out.sort((a, b) => a[0] - b[0]);
+    };
+
+    // ── floor plate: overall + per-zone real extents ──
+    const extent = (pts: { x: number; z: number }[]) => pts.length ? {
+      minX: Math.min(...pts.map(p => p.x)), maxX: Math.max(...pts.map(p => p.x)),
+      minZ: Math.min(...pts.map(p => p.z)), maxZ: Math.max(...pts.map(p => p.z)), n: pts.length,
+    } : null;
+    const zoneFloors: Record<string, ReturnType<typeof extent>> = {};
+    for (const zn of ROOM_ZONES) {
+      zoneFloors[zn.id] = extent(floor.filter(p =>
+        p.x >= zn.minX && p.x <= zn.maxX && p.z >= zn.minZ && p.z <= zn.maxZ));
+    }
+
+    const result = {
+      floorY: WORLD.floorY, bbox: extent(floor), rotunda,
+      floorPlate: extent(floor), zoneFloors,
+      wallsAlongX: segments('x'),  // [z, x0, x1, n] — walls running E–W
+      wallsAlongZ: segments('z'),  // [x, z0, z1, n] — walls running N–S
+      wallVertexCount: wall.length, floorVertexCount: floor.length,
+    };
+    const json = JSON.stringify(result);
+    (navigator as Navigator & { clipboard?: { writeText(t: string): Promise<void> } })
+      .clipboard?.writeText(json).catch(() => {});
+    console.log('📋 Floor-plan probe (copied to clipboard):', result);
+    return result;
   }
 
   public debugRooms() {
