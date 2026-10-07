@@ -6,6 +6,7 @@ import docker
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from graph import cognitive_app, TaskState
 from router import cost_tracker
+from fastmcp import FastMCP 
 
 
 # Optional .env loading (python-dotenv) — API keys live in python_engine/.env
@@ -16,6 +17,7 @@ except ImportError:
     pass
 
 app = FastAPI()
+mcp = FastMCP()
 
 # Initialize Docker Client for Micro-VM Sandboxing
 try:
