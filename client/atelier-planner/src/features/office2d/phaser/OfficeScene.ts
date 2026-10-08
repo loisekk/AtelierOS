@@ -212,7 +212,7 @@ export class OfficeScene extends Phaser.Scene {
       .setDisplaySize(ROTUNDA_R * 0.44, ROTUNDA_R * 0.44);
     for (let i = 0; i < 3; i++) {
       this.brainDots.push(this.add.image(0, 0, dotKey).setDepth(4)
-        .setDisplaySize(0.22, 0.22));
+        .setDisplaySize(0.6, 0.6));
     }
   }
 

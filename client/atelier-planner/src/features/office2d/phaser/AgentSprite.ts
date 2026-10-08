@@ -3,6 +3,14 @@ import { P2D } from '../renderer/theme';
 import { renderBlobAvatar, renderAura, statusColor } from './blobAvatar';
 import type { Agent2D } from '../types';
 
+/** World-locked display sizes (world units — Phaser Images default to raw
+ *  texture px, which would render a 152 px glyph as 152 world units). Glyph =
+ *  the 0.94 u avatar sheet; aura = the 1.9 u ring sheet (0.85 u ring radius,
+ *  mirrors the canvas seatedAura). The name pill is screen-space instead —
+ *  see sync() for the 1/zoom compensation. */
+const GLYPH_WORLD = 0.94;
+const AURA_WORLD = 1.9;
+
 /** One employee on the Phaser floor: glyph image (texture re-rendered on
  *  status change — statuses are rare events, positions are per-frame),
  *  seated aura ring (rotating shimmer / pulse / blink), and a name pill
@@ -21,8 +29,10 @@ export class AgentSprite {
     this.scene = scene;
     this.id = a.id;
     this.ensureTexture(a);
-    this.glyph = scene.add.image(a.x, a.z, AgentSprite.texKey(a)).setDepth(5);
-    this.aura = scene.add.image(a.x, a.z, AgentSprite.texKey(a)).setDepth(4).setVisible(false);
+    this.glyph = scene.add.image(a.x, a.z, AgentSprite.texKey(a)).setDepth(5)
+      .setDisplaySize(GLYPH_WORLD, GLYPH_WORLD);
+    this.aura = scene.add.image(a.x, a.z, AgentSprite.auraKey(a)).setDepth(4).setVisible(false)
+      .setDisplaySize(AURA_WORLD, AURA_WORLD);
     this.pill = scene.add.text(a.x, a.z, '', {
       fontFamily: 'Archivo, sans-serif', fontSize: '10px', color: P2D.label,
       align: 'center', resolution: 2,
@@ -32,6 +42,11 @@ export class AgentSprite {
 
   private static texKey(a: Agent2D): string {
     return `ag:${a.id}:${a.status ?? 'idle'}`;
+  }
+
+  /** Aura textures are keyed by status colour (few, shared); glyphs by agent. */
+  private static auraKey(a: Agent2D): string {
+    return `aura:${statusColor(a)}`;
   }
 
   private ensureTexture(a: Agent2D): void {
@@ -46,10 +61,9 @@ export class AgentSprite {
     this.ensureTexture(a);
     this.glyph.setTexture(AgentSprite.texKey(a));
     this.pill.setText(`${a.name}\n${this.status.toUpperCase()}`);
-    const col = statusColor(a);
-    const auraKey = `aura:${col}`;
+    const auraKey = AgentSprite.auraKey(a);
     if (!this.scene.textures.exists(auraKey)) {
-      this.scene.textures.addCanvas(auraKey, renderAura(col));
+      this.scene.textures.addCanvas(auraKey, renderAura(statusColor(a)));
     }
     this.aura.setTexture(auraKey).setVisible(a.seated);
   }
@@ -59,7 +73,10 @@ export class AgentSprite {
   sync(a: Agent2D, zoom: number, t: number): void {
     this.glyph.setPosition(a.x, a.z);
     this.aura.setPosition(a.x, a.z);
-    this.pill.setPosition(a.x, a.z + 0.62);
+    // Screen-space pill (mirrors the canvas drawNamePill): constant px size
+    // at any zoom via 1/zoom compensation, anchored 0.52 u below the avatar
+    // centre (canvas: py = sy + 0.52·k) so it tracks instead of floating.
+    this.pill.setPosition(a.x, a.z + 0.52).setScale(1 / zoom);
     this.pill.setVisible(zoom >= 6);
     if ((a.status ?? 'idle') !== this.status) this.retex(a);
     this.aura.setVisible(a.seated);
