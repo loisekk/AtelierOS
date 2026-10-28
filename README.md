@@ -88,7 +88,7 @@ flowchart LR
 <div align="center">
 
 ### 🧭 2D Plan View
-<img src="assets/2d-atelier-os.png" alt="Atelier OS 2D view" width="92%" />
+<img src="assets/AtelierOS Pixel 2d.png" alt="Atelier OS 2D view" width="92%" />
 <br/><sub>Top-down layout of the HQ: rooms, zones and workstations at a glance.</sub>
 
 <br/><br/>
