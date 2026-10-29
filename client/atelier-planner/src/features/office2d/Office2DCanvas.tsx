@@ -13,6 +13,8 @@ interface Office2DCanvasProps {
   labelsVisible: boolean;
   /** Phase 14.4 — live Brain state (tasks running / HITL pending). */
   brainActive: boolean;
+  /** v2 — fire-egress drill state (3D Fire-button parity in the 2D view). */
+  fireActive: boolean;
   onSelect: (id: string | null) => void;
 }
 
@@ -34,8 +36,10 @@ interface Tooltip { x: number; y: number; title: string; subtitle: string }
  * sprite layer; the proven Canvas renderer stays as automatic fallback if
  * the chunk fails. Pure projection either way — mounting/unmounting can
  * never reset tasks, agents, selection, or the backend connection.
- */
-export const Office2DCanvas: FC<Office2DCanvasProps> = ({ engineRef, items, selectedId, labelsVisible, brainActive, onSelect }) => {
+ *
+ * v2 — carries fireActive through to the scene (egress drill overlay);
+ * the fallback renderer keeps its Phase 18 prop shape (emergency path). */
+export const Office2DCanvas: FC<Office2DCanvasProps> = ({ engineRef, items, selectedId, labelsVisible, brainActive, fireActive, onSelect }) => {
   const hostRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<OfficeScene | null>(null);
   const [mode, setMode] = useState<'loading' | 'phaser' | 'fallback'>('loading');
@@ -90,9 +94,9 @@ export const Office2DCanvas: FC<Office2DCanvasProps> = ({ engineRef, items, sele
 
   // App state → scene (no re-init; the game loop picks it up next frame).
   useEffect(() => {
-    const state: Office2DAppState = { items, selectedId, labelsVisible, zonesVisible: zonesOn, brainActive };
+    const state: Office2DAppState = { items, selectedId, labelsVisible, zonesVisible: zonesOn, brainActive, fireActive };
     sceneRef.current?.setAppState(state);
-  }, [items, selectedId, labelsVisible, zonesOn, brainActive, mode]);
+  }, [items, selectedId, labelsVisible, zonesOn, brainActive, fireActive, mode]);
 
   return (
     <div className="office2d-root">
