@@ -405,6 +405,7 @@ function App() {
           selectedId={selectedId}
           labelsVisible={labelsVisible}
           brainActive={brainActive}
+          fireActive={fireActive}
           onSelect={handle2DSelect}
         />
       )}
