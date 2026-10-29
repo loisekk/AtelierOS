@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
-import { ROOM_ZONES, BOUNDS, BRAIN_ANCHOR, MEETING_ANCHOR } from '../../canvas/architecture/SpatialConfig';
+import { ROOM_ZONES, BOUNDS, BRAIN_ANCHOR, MEETING_ANCHOR, EGRESS_POINTS } from '../../canvas/architecture/SpatialConfig';
+import type { RoomZone } from '../../canvas/architecture/SpatialConfig';
 import { ITEM_CATALOG } from '../../furniture/catalog';
 import { P2D } from '../renderer/theme';
 import { hitTestWorldPoint } from '../renderer/hitTest';
@@ -7,6 +8,7 @@ import type { HitTarget } from '../renderer/hitTest';
 import { bakeStaticPlan, PLAN_WORLD } from './bakeStaticPlan';
 import { AgentSprite } from './AgentSprite';
 import { persist } from './persist';
+import { P2 } from './premium/palette';
 import type { Agent2D } from '../types';
 import type { PlacedItemMeta } from '../../ai-agents/types';
 
@@ -23,6 +25,8 @@ export interface Office2DAppState {
   labelsVisible: boolean;
   zonesVisible: boolean;
   brainActive: boolean;
+  /** v2 — fire-egress drill overlay (parity with the 3D Fire button). */
+  fireActive: boolean;
 }
 
 const TAU = Math.PI * 2;
@@ -30,21 +34,29 @@ const ROTUNDA_R = 6.1;
 const ZOOM_MIN = 3, ZOOM_MAX = 60;
 
 /** Sheet-content signature — exactly what the static bake paints (items
- *  geometry + the [Labels] flag). Agent STATUS is deliberately excluded:
- *  the engine clones `placedItems` on every status change, but a status
- *  never reaches the baked sheet (agents live in the sprite layer), so a
- *  blind ref-comparison would fire a pointless ~100 ms rebake per status
- *  event. Selection/brain/zones are live layers — never in the signature. */
-function bakeSigOf(items: PlacedItemMeta[], labelsVisible: boolean): string {
-  return (labelsVisible ? 'L1|' : 'L0|') + items.map(i =>
+ *  geometry). Agent STATUS is deliberately excluded: the engine clones
+ *  `placedItems` on every status change, but a status never reaches the
+ *  baked sheet (agents live in the sprite layer). LABELS are excluded too
+ *  since the v2 bake — they are live pills now, so toggling [Labels] flips
+ *  a layer, never a ~100 ms rebake. Selection/brain/zones/fire are live
+ *  layers — never in the signature. */
+function bakeSigOf(items: PlacedItemMeta[]): string {
+  return items.map(i =>
     `${i.id},${i.type},${i.name},${i.role ?? ''},${i.ws ? 1 : 0},` +
     `${i.position.x},${i.position.z},${i.y ?? ''},${i.rotation}`).join(';');
+}
+
+interface LabelPill {
+  room: RoomZone | null;          // null = the rotunda (brain) pill
+  name: Phaser.GameObjects.Text;
+  sub: Phaser.GameObjects.Text;
+  bg: Phaser.GameObjects.Graphics;
 }
 
 export class OfficeScene extends Phaser.Scene {
   private deps: OfficeSceneDeps;
   private state: Office2DAppState = {
-    items: [], selectedId: null, labelsVisible: true, zonesVisible: false, brainActive: false,
+    items: [], selectedId: null, labelsVisible: true, zonesVisible: false, brainActive: false, fireActive: false,
   };
   private planImage: Phaser.GameObjects.Image | null = null;
   private planKey = '';
@@ -61,6 +73,10 @@ export class OfficeScene extends Phaser.Scene {
   private brainGlow!: Phaser.GameObjects.Image;
   private brainDots: Phaser.GameObjects.Image[] = [];
   private sprites = new Map<string, AgentSprite>();
+  /** v2 — floating room-label pills (like the 3D's sprite labels). */
+  private labelLayer!: Phaser.GameObjects.Container;
+  private labelPills: LabelPill[] = [];
+  private labelSyncAt = 0;
   private panning = false;
   private moved = false;
   private downX = 0; private downY = 0;
@@ -82,6 +98,7 @@ export class OfficeScene extends Phaser.Scene {
     this.zoneFx = this.add.graphics().setDepth(2);
     this.fx = this.add.graphics().setDepth(4);
     this.buildBrain();
+    this.buildLabels();
     this.rebake(false);           // bakes this.state (possibly pre-filled by setAppState)
     this.created = true;
 
@@ -155,17 +172,18 @@ export class OfficeScene extends Phaser.Scene {
    *  ANY time: pre-create calls only store the state (create() bakes it);
    *  post-create the sheet rebakes only when its own content changed. */
   public setAppState(next: Office2DAppState): void {
-    const sig = bakeSigOf(next.items, next.labelsVisible);
+    const sig = bakeSigOf(next.items);
     this.state = next;
     if (!this.created) return; // create() bakes the stored state on boot
-    if (sig !== this.bakeSig) this.rebake(true); // items geometry / labels changed
+    if (sig !== this.bakeSig) this.rebake(true); // items geometry changed
     this.drawZones(); // toggle-only redraw — never per frame
+    this.labelLayer?.setVisible(next.labelsVisible); // pills flip, no rebake
   }
 
   // ── static sheet ─────────────────────────────────────────────────────
   private rebake(replace: boolean): void {
-    const canvas = bakeStaticPlan(this.state.items, this.state.labelsVisible);
-    this.bakeSig = bakeSigOf(this.state.items, this.state.labelsVisible);
+    const canvas = bakeStaticPlan(this.state.items);
+    this.bakeSig = bakeSigOf(this.state.items);
     const key = `office-plan-${++this.bakeSeq}`;
     this.textures.addCanvas(key, canvas);
     if (this.planImage && replace) {
@@ -179,6 +197,66 @@ export class OfficeScene extends Phaser.Scene {
         .setDisplaySize(PLAN_WORLD.w, PLAN_WORLD.h).setDepth(1);
     }
     this.planKey = key;
+  }
+
+  // ── v2 — floating room-label pills (like the 3D target) ──────────────
+  /** Dark pills (bold white name + grey live sub-line) floating ABOVE the
+   *  sheet — the single biggest "premium 3D" label cue, and alive: the sub
+   *  line shows live headcount per room (updated at 2 Hz), and the rotunda
+   *  pill mirrors brainActive. */
+  private buildLabels(): void {
+    this.labelLayer = this.add.container(0, 0).setDepth(8);
+    const mk = (name: string, cx: number, cz: number, room: RoomZone | null): void => {
+      const bg = this.add.graphics();
+      const nameT = this.add.text(0, -6, name, {
+        fontFamily: 'Archivo, sans-serif', fontSize: '13px', fontStyle: 'bold',
+        color: P2.label.fg, resolution: 2,
+      }).setOrigin(0.5, 1);
+      const subT = this.add.text(0, -2, '', {
+        fontFamily: 'Archivo, sans-serif', fontSize: '9px', color: P2.label.sub,
+        resolution: 2,
+      }).setOrigin(0.5, 0);
+      const pill = this.add.container(cx, cz, [bg, nameT, subT]);
+      this.labelLayer.add(pill);
+      this.labelPills.push({ room, name: nameT, sub: subT, bg });
+    };
+    // Rect rooms from the zone truth; the rotunda pill anchors on the
+    // GLB-measured BRAIN_ANCHOR (the zone rect centre is inside the wall —
+    // never anchor anything to it, see SpatialConfig v4.1).
+    for (const z of ROOM_ZONES) {
+      if (z.id === 'brain_chamber') continue; // rotunda pill replaces it
+      mk(z.label, (z.minX + z.maxX) / 2, (z.minZ + z.maxZ) / 2, z);
+    }
+    mk('CEO Brain Core', BRAIN_ANCHOR.x, BRAIN_ANCHOR.z, null);
+    this.labelLayer.setVisible(this.state.labelsVisible);
+    this.syncLabels(true);
+  }
+
+  /** Refresh pill sub-lines (live headcount / brain state) + pill backing. */
+  private syncLabels(force = false): void {
+    const agents = this.deps.getAgents();
+    for (const p of this.labelPills) {
+      let sub: string;
+      if (p.room) {
+        const room = p.room;
+        const n = agents.filter(a =>
+          a.x >= room.minX && a.x <= room.maxX &&
+          a.z >= room.minZ && a.z <= room.maxZ).length;
+        sub = n > 0 ? `${n} ACTIVE` : 'STANDBY';
+      } else {
+        sub = this.state.brainActive ? 'PROCESSING' : 'IDLE';
+      }
+      if (force || p.sub.text !== sub) {
+        p.sub.setText(sub);
+        const w = Math.max(p.name.width, p.sub.width) + 22;
+        const h = p.name.height + p.sub.height + 13;
+        p.bg.clear();
+        p.bg.fillStyle(P2.label.bg, P2.label.bgAlpha);
+        p.bg.fillRoundedRect(-w / 2, -h / 2 - 5, w, h + 10, 7);
+        p.bg.fillStyle(P2.label.accent, 1);
+        p.bg.fillRoundedRect(-w / 2 + 7, -h / 2 - 1, 2.5, h + 2, 1.2);
+      }
+    }
   }
 
   // ── brain (dynamic — matches the 14.4 painter math exactly) ───────────
@@ -242,6 +320,7 @@ export class OfficeScene extends Phaser.Scene {
   private dashLine(g: Phaser.GameObjects.Graphics, x1: number, y1: number, x2: number, y2: number,
                    dash: number, gap: number): void {
     const len = Math.hypot(x2 - x1, y2 - y1);
+    if (len < 1e-6) return;
     const ux = (x2 - x1) / len, uy = (y2 - y1) / len;
     for (let s = 0; s < len; s += dash + gap) {
       const e = Math.min(s + dash, len);
@@ -250,6 +329,28 @@ export class OfficeScene extends Phaser.Scene {
       g.lineTo(x1 + ux * e, y1 + uy * e);
       g.strokePath();
     }
+  }
+
+  // ── v2 — fire-egress drill overlay (3D Fire-button parity) ───────────
+  private drawEgress(t: number): void {
+    this.fx.fillStyle(P2.egress, 0.045 + 0.02 * Math.sin(t * 3.2));
+    this.fx.fillRect(BOUNDS.minX, BOUNDS.minZ, BOUNDS.maxX - BOUNDS.minX, BOUNDS.maxZ - BOUNDS.minZ);
+    EGRESS_POINTS.forEach(([x, , z], i) => {
+      const pulse = (t * 1.3 + i * 0.25) % 1;
+      this.fx.lineStyle(0.09, P2.egress, 0.9 * (1 - pulse));
+      this.fx.strokeCircle(x, z, 0.45 + pulse * 1.25);
+      // outward chevron pointing away from the building centre
+      const d = Math.hypot(x, z) || 1;
+      const ux = x / d, uz = z / d;
+      const px = x + ux * 1.45, pz = z + uz * 1.45;
+      const s = 0.34;
+      this.fx.fillStyle(P2.egress, 0.95);
+      this.fx.fillTriangle(
+        px + ux * s, pz + uz * s,
+        px - ux * s * 0.5 - uz * s * 0.5, pz - uz * s * 0.5 + ux * s * 0.5,
+        px - ux * s * 0.5 + uz * s * 0.5, pz - uz * s * 0.5 - ux * s * 0.5,
+      );
+    });
   }
 
   // ── per-frame live layer ──────────────────────────────────────────────
@@ -312,7 +413,7 @@ export class OfficeScene extends Phaser.Scene {
         .map(([lx, lz]) => [selItem.position.x + lx * cos - lz * sin,
                             selItem.position.z + lx * sin + lz * cos]);
       for (let i = 0; i < 4; i++) {
-        const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % 4];
+        const [x1, y1] = pts[i]!, [x2, y2] = pts[(i + 1) % 4]!;
         this.dashLine(this.fx, x1, y1, x2, y2, 0.4, 0.3);
       }
     }
@@ -353,6 +454,21 @@ export class OfficeScene extends Phaser.Scene {
       this.fx.strokePath();
     } else {
       this.brainDots.forEach(d => d.setVisible(false));
+    }
+
+    // v2 — fire-egress drill overlay (3D parity)
+    if (this.state.fireActive) this.drawEgress(t);
+
+    // v2 — label pills: constant screen size (1/zoom), fade in from zoom 3.2
+    if (this.labelLayer) {
+      const la = Phaser.Math.Clamp((zoom - 3.2) / 1.8, 0, 1);
+      this.labelLayer.setVisible(this.state.labelsVisible && la > 0.02);
+      this.labelLayer.setAlpha(la);
+      this.labelLayer.setScale(1 / zoom);
+    }
+    if (time - this.labelSyncAt > 500) { // live headcount refresh at 2 Hz
+      this.syncLabels();
+      this.labelSyncAt = time;
     }
 
     if (time - this.lastPersist > 500) this.persistCamera();
