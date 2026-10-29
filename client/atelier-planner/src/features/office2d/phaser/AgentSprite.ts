@@ -10,11 +10,16 @@ import type { Agent2D } from '../types';
  *  see sync() for the 1/zoom compensation. */
 const GLYPH_WORLD = 0.94;
 const AURA_WORLD = 1.9;
+const TAU = Math.PI * 2;
 
 /** One employee on the Phaser floor: glyph image (texture re-rendered on
  *  status change — statuses are rare events, positions are per-frame),
  *  seated aura ring (rotating shimmer / pulse / blink), and a name pill
- *  (Phaser Text — crisp at any zoom, gated like the canvas version). */
+ *  (Phaser Text — crisp at any zoom, gated like the canvas version).
+ *
+ *  v2 MOTION: the glyph derives velocity from consecutive engine snapshots
+ *  (self-contained — zero engine changes) and bobs + wobbles while walking,
+ *  so agents read as ALIVE in motion, not teleported chess pieces. */
 export class AgentSprite {
   readonly id: string;
   readonly glyph: Phaser.GameObjects.Image;
@@ -24,10 +29,17 @@ export class AgentSprite {
   /** Explicit field — tsconfig `erasableSyntaxOnly` forbids constructor
    *  parameter properties (`private scene` in the signature). */
   private readonly scene: Phaser.Scene;
+  /** v2 motion state — last snapshot position + per-agent bob phase. */
+  private lastX: number;
+  private lastZ: number;
+  private readonly bobPhase: number;
 
   constructor(scene: Phaser.Scene, a: Agent2D) {
     this.scene = scene;
     this.id = a.id;
+    this.lastX = a.x;
+    this.lastZ = a.z;
+    this.bobPhase = (a.id.charCodeAt(0) ?? 0) % TAU;
     this.ensureTexture(a);
     this.glyph = scene.add.image(a.x, a.z, AgentSprite.texKey(a)).setDepth(5)
       .setDisplaySize(GLYPH_WORLD, GLYPH_WORLD);
@@ -69,9 +81,17 @@ export class AgentSprite {
   }
 
   /** Per-frame sync. World position IS the engine snapshot — no tweening,
-   *  no interpolation: the 2D view can never disagree with the 3D truth. */
+   *  no interpolation: the 2D view can never disagree with the 3D truth.
+   *  v2: velocity (from consecutive snapshots) drives a walk bob + tiny
+   *  rotation wobble — pure presentation, never moves the agent. */
   sync(a: Agent2D, zoom: number, t: number): void {
-    this.glyph.setPosition(a.x, a.z);
+    const dx = a.x - this.lastX;
+    const dz = a.z - this.lastZ;
+    const moving = !a.seated && Math.hypot(dx, dz) > 0.004;
+    const bob = moving ? Math.sin(t * 11 + this.bobPhase) : 0;
+
+    this.glyph.setPosition(a.x, a.z + bob * 0.05);
+    this.glyph.rotation = moving ? bob * 0.06 : 0;
     this.aura.setPosition(a.x, a.z);
     // Screen-space pill (mirrors the canvas drawNamePill): constant px size
     // at any zoom via 1/zoom compensation, anchored 0.52 u below the avatar
@@ -89,6 +109,9 @@ export class AgentSprite {
       else if (st === 'error') { this.aura.setAlpha(Math.sin(t * 7) > 0 ? 0.9 : 0); }
       else { this.aura.setAlpha(0.45); }
     }
+
+    this.lastX = a.x;
+    this.lastZ = a.z;
   }
 
   destroy(): void { this.glyph.destroy(); this.aura.destroy(); this.pill.destroy(); }
