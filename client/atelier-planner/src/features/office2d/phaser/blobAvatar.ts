@@ -5,7 +5,10 @@ import type { Agent2D } from '../types';
  *  re-derived self-contained — no dependency on the canvas painters) ──
  *  Each agent is a seeded blob body + status face + dept ring, rendered ONCE
  *  per (id, status) into a canvas and registered as a Phaser texture.
- *  Deterministic: same id → same creature forever (Blobatar guarantee). */
+ *  Deterministic: same id → same creature forever (Blobatar guarantee).
+ *
+ *  v2: WALKING gets its own face (focused squint + open mouth) and speed
+ *  dashes trailing the body — walkers now read as in-motion at a glance. */
 
 const TAU = Math.PI * 2;
 
@@ -56,6 +59,9 @@ function drawFace(ctx: CanvasRenderingContext2D, k: number, st: string): void {
     }
   } else if (st === 'waiting') {
     for (const ex of [-eyeDX, eyeDX]) { ctx.beginPath(); ctx.arc(ex, eyeY - eyeR * 0.5, eyeR, 0, TAU); ctx.fill(); }
+  } else if (st === 'walking') {
+    // v2 — focused squint (tall narrow eyes) while in motion
+    for (const ex of [-eyeDX, eyeDX]) { ctx.beginPath(); ctx.ellipse(ex, eyeY, eyeR * 0.55, eyeR * 1.15, 0, 0, TAU); ctx.fill(); }
   } else {
     for (const ex of [-eyeDX, eyeDX]) { ctx.beginPath(); ctx.arc(ex, eyeY, eyeR, 0, TAU); ctx.fill(); }
   }
@@ -67,6 +73,9 @@ function drawFace(ctx: CanvasRenderingContext2D, k: number, st: string): void {
     ctx.beginPath(); ctx.arc(0, mouthY + eyeR * 1.2, mouthW * 0.7, Math.PI * 1.2, Math.PI * 1.8); ctx.stroke();
   } else if (st === 'celebrate') {
     ctx.beginPath(); ctx.arc(0, mouthY - eyeR * 0.5, mouthW, Math.PI * 0.15, Math.PI * 0.85); ctx.stroke();
+  } else if (st === 'walking') {
+    // v2 — small open mouth (mid-stride breath)
+    ctx.beginPath(); ctx.arc(0, mouthY, eyeR * 0.5, 0, TAU); ctx.fill();
   } else {
     ctx.beginPath(); ctx.arc(0, mouthY - eyeR * 0.3, mouthW * 0.8, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
   }
@@ -107,6 +116,15 @@ export function renderBlobAvatar(a: Agent2D): HTMLCanvasElement {
   grad.addColorStop(0, dept); grad.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.globalAlpha = 0.9; ctx.fillStyle = dept; ctx.fill(); ctx.globalAlpha = 1;
   ctx.strokeStyle = P2D.ink; ctx.lineWidth = 1.4; ctx.stroke();
+
+  // v2 — speed dashes while walking (trailing motion lines, both sides)
+  if ((a.status ?? 'idle') === 'walking') {
+    ctx.strokeStyle = 'rgba(62, 46, 32, 0.35)'; ctx.lineWidth = 1.6; ctx.lineCap = 'round';
+    for (const [dy, x0, x1] of [[-0.16, -0.52, -0.34], [0.02, -0.56, -0.40], [0.20, -0.50, -0.36]] as const) {
+      ctx.beginPath(); ctx.moveTo(x0 * k, dy * k); ctx.lineTo(x1 * k, dy * k); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(-x0 * k, dy * k); ctx.lineTo(-x1 * k, dy * k); ctx.stroke();
+    }
+  }
 
   // face plate
   ctx.beginPath(); ctx.arc(0, 0, bw * 0.62, 0, TAU);
