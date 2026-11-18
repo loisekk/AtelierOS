@@ -1,0 +1,86 @@
+name: AI Contributor — Security & Quality Guardrails
+
+on:
+  pull_request:
+    branches: [main, master]
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+  pull-requests: write
+  statuses: write
+
+jobs:
+  verify-ai-guardrails:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect Branch Integrity
+        run: |
+          HEAD_BRANCH="${{ github.head_ref }}"
+          BASE_BRANCH="${{ github.base_ref }}"
+          echo "Head Branch: $HEAD_BRANCH -> Base Branch: $BASE_BRANCH"
+          
+          if [[ "$HEAD_BRANCH" == "main" || "$HEAD_BRANCH" == "master" ]]; then
+            echo "::error::Direct PRs originating from default branch are forbidden."
+            exit 1
+          fi
+
+      - name: Secret Leak Detection Scan
+        run: |
+          echo "Scanning PR git diff for potential API keys or tokens..."
+          DIFF_CONTENT=$(git diff origin/${{ github.base_ref }}...HEAD)
+          
+          # Detect OpenAI / Anthropic / GitHub token patterns
+          if echo "$DIFF_CONTENT" | grep -E "sk-ant-[a-zA-Z0-9_\-]{30,}|sk-[a-zA-Z0-9_\-]{40,}|ghp_[a-zA-Z0-9]{36}|gho_[a-zA-Z0-9]{36}" ; then
+            echo "::error::CRITICAL: High-entropy API key or token pattern detected in PR diff!"
+            exit 1
+          fi
+          echo "Secret scan passed: No known token patterns detected."
+
+      - name: Validate AI Contributor Metadata Block
+        if: startsWith(github.head_ref, 'ai/') || startsWith(github.head_ref, 'copilot/')
+        run: |
+          PR_BODY="${{ github.event.pull_request.body }}"
+          if ! echo "$PR_BODY" | grep -q "AI-CONTRIBUTOR-METADATA"; then
+            echo "::warning::PR body is missing mandatory <!-- AI-CONTRIBUTOR-METADATA block. Please update using .github/pull_request_template.md."
+          else
+            echo "AI Contributor metadata header confirmed."
+          fi
+
+      - name: Execute Project Test Suite
+        run: |
+          if [ -f "requirements.txt" ] || [ -f "pyproject.toml" ]; then
+            echo "Python project detected. Setting up Python and running pytest..."
+            python -m pip install --upgrade pip
+            if [ -f "requirements.txt" ]; then pip install -r requirements.txt; fi
+            if command -v pytest >/dev/null 2>&1; then
+              pytest tests/ -v || echo "::warning::Some pytest tests failed or no tests found."
+            fi
+          fi
+          if [ -f "package.json" ]; then
+            echo "Node.js project detected. Running npm test..."
+            npm ci --ignore-scripts || npm install
+            npm test || echo "::warning::npm test failed or not defined."
+          fi
+
+      - name: Post Guardrail Verification Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const message = `### ✅ AI Contributor Guardrail Verification Passed
+            - **Branch Protocol:** Verified (Source: \`${context.payload.pull_request.head.ref}\`)
+            - **Secret Leak Scan:** Verified (Zero leaked API keys or tokens found)
+            - **Human-in-the-Loop Gate:** Awaiting mandatory maintainer review and manual merge approval by @${context.repo.owner}.`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: message
+            });

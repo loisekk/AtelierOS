@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📖 AI Contributor Guidelines
+    url: https://github.com/loisekk/open-mlpipe/blob/main/CONTRIBUTING_AI.md
+    about: Read mandatory branch protocols, model enforcement, and safety guardrails before triggering an AI agent.
+  - name: 🤖 AI Contributors Roster
+    url: https://github.com/loisekk/open-mlpipe/blob/main/AI_CONTRIBUTORS.md
+    about: View registered agents, supported models, and operational capabilities.
