@@ -1,0 +1,21 @@
+---
+description: Mandatory AI Contributor Guardrails, Branching, and Verification Standards
+globs: *
+alwaysApply: true
+---
+
+# Cursor AI Contributor Standards
+
+## 1. Safety Guardrails
+- **Branch Protection:** All tasks must branch from `main` to `ai/cursor-<issue-number>-<description>`. Never push directly to `main`.
+- **Zero Secrets:** Do not generate or hardcode API keys or secrets.
+- **Scope Discipline:** Focus exclusively on files directly relevant to the issue.
+
+## 2. Verification Mandate
+- Execute repository test commands before concluding the task.
+- Ensure all TypeScript/Python type checks pass with zero errors.
+- Document any environment requirements or migrations in the PR description.
+
+## 3. Pull Request Requirements
+- Fill out `.github/pull_request_template.md`.
+- Include the `<!-- AI-CONTRIBUTOR-METADATA -->` block declaring the exact model executed.

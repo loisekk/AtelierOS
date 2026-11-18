@@ -1,0 +1,79 @@
+name: "🤖 AI Feature Task"
+description: "Specify a feature to be implemented by an official AI Contributor agent"
+title: "[FEAT]: "
+labels: ["ai-contribution", "feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### AI Contributor Feature Request
+        Use this form to specify a well-defined feature request for autonomous AI coding agents (Claude Code, OpenAI Codex, Cursor, or GitHub Copilot).
+  - type: dropdown
+    id: assigned_agent
+    attributes:
+      label: "Target AI Contributor"
+      description: "Select which AI platform is assigned to this task"
+      options:
+        - "Anthropic — Claude Code (agent:claude)"
+        - "OpenAI — Codex (agent:codex)"
+        - "Cursor — Background Agent (agent:cursor)"
+        - "GitHub Copilot — Coding Agent (agent:copilot)"
+        - "Any Available Agent"
+    validations:
+      required: true
+  - type: dropdown
+    id: preferred_model
+    attributes:
+      label: "Model Preference"
+      description: "Specify the required model reasoning tier"
+      options:
+        - "Default Coding Model (Sonnet 3.5 / GPT-4o)"
+        - "Claude 3.7 Sonnet (Hybrid Reasoning)"
+        - "Claude 3 Opus (Maximum Systems Reasoning)"
+        - "OpenAI o3-mini (High Algorithmic Reasoning)"
+        - "OpenAI o1 (Deep Analytical Reasoning)"
+    validations:
+      required: true
+  - type: textarea
+    id: feature_summary
+    attributes:
+      label: "Feature Description & Problem Statement"
+      description: "Clearly describe the feature, what problem it solves, and where in the repository architecture it belongs."
+      placeholder: "Describe the functionality to add..."
+    validations:
+      required: true
+  - type: textarea
+    id: architecture_context
+    attributes:
+      label: "Relevant Files & Architecture Context"
+      description: "List relevant source files, modules, classes, and architectural conventions."
+      placeholder: "- src/core/pipeline.py\n- tests/test_pipeline.py"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: "Acceptance Criteria"
+      description: "Define strict, unambiguous conditions for considering this feature complete."
+      placeholder: "- [ ] Implements function X with type annotations\n- [ ] Handles edge cases A, B, and C\n- [ ] All new unit tests pass\n- [ ] Documentation updated"
+    validations:
+      required: true
+  - type: textarea
+    id: test_commands
+    attributes:
+      label: "Test & Validation Commands"
+      description: "Provide the exact command(s) the agent must run to verify its work."
+      placeholder: "pytest tests/test_feature.py -v"
+    validations:
+      required: true
+  - type: checkboxes
+    id: guardrails_acknowledgement
+    attributes:
+      label: "Security & Guardrails"
+      options:
+        - label: "Agent must work in an isolated branch `ai/<agent>-<issue-id>` and submit a draft PR."
+          required: true
+        - label: "Agent must never push directly to `main` or merge automatically."
+          required: true
+        - label: "Agent must respect cost limits and avoid unapproved paid services."
+          required: true

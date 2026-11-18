@@ -1,0 +1,37 @@
+name: "📚 AI Documentation & Refactor Task"
+description: "Assign an AI Contributor agent to improve documentation, add type hints, or clean up technical debt"
+title: "[DOC/DEBT]: "
+labels: ["ai-contribution", "documentation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ### AI Contributor Documentation & Debt Remediation
+        Use this template for documentation overhauls, docstring generation, typing improvements, or linting cleanups.
+  - type: dropdown
+    id: assigned_agent
+    attributes:
+      label: "Target AI Contributor"
+      options:
+        - "Anthropic — Claude Code (agent:claude)"
+        - "OpenAI — Codex (agent:codex)"
+        - "Cursor — Background Agent (agent:cursor)"
+        - "GitHub Copilot — Coding Agent (agent:copilot)"
+        - "Any Available Agent"
+    validations:
+      required: true
+  - type: textarea
+    id: task_scope
+    attributes:
+      label: "Scope of Improvements"
+      description: "List the documentation sections, docstrings, or modules to update."
+      placeholder: "- Update ARCHITECTURE.md with recent DAG flow changes\n- Add Google-style docstrings to module X"
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: "Acceptance Criteria"
+      placeholder: "- [ ] Docs are accurately synchronized with codebase\n- [ ] Markdown links and code snippets pass validation"
+    validations:
+      required: true

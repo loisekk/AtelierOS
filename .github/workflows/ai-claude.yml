@@ -1,0 +1,110 @@
+name: AI Contributor — Claude Code
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  dispatch-claude:
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == 'agent:claude') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify Collaborator Authorization
+        id: auth-check
+        run: |
+          AUTHOR="${{ github.event.sender.login }}"
+          ASSOCIATION="${{ github.event.comment.author_association || github.event.issue.author_association }}"
+          echo "Triggered by $AUTHOR with association $ASSOCIATION"
+          if [[ "$ASSOCIATION" != "OWNER" && "$ASSOCIATION" != "MEMBER" && "$ASSOCIATION" != "COLLABORATOR" ]]; then
+            echo "::error::Unauthorized execution attempt by non-collaborator: $AUTHOR"
+            exit 1
+          fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect Credentials Availability
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.ANTHROPIC_API_KEY }}" ] && [ -z "${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}" ]; then
+            echo "has_secret=false" >> $GITHUB_OUTPUT
+            echo "::warning::Neither ANTHROPIC_API_KEY nor CLAUDE_CODE_OAUTH_TOKEN is configured in secrets."
+          else
+            echo "has_secret=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post Advisory Comment if Credentials Missing
+        if: steps.check-secrets.outputs.has_secret == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const message = `### ⚠️ AI Contributor Standby: Claude Code
+            Claude Code was triggered on issue #${issueNumber}, but **Anthropic credentials are not yet configured in repository secrets** (\`ANTHROPIC_API_KEY\` or \`CLAUDE_CODE_OAUTH_TOKEN\`).
+            
+            **To protect the maintainer against unapproved billing:**
+            1. No paid subscriptions or credits are activated automatically.
+            2. When promotional credits, student grants, or approved API keys are ready, add them to repository secrets.
+            3. Once added, re-apply the \`agent:claude\` label or comment \`@claude retry\` to begin autonomous execution.`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: message
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['status:credentials-needed']
+            });
+
+      - name: Resolve Requested Model
+        if: steps.check-secrets.outputs.has_secret == 'true'
+        id: resolve-model
+        run: |
+          LABELS='${{ toJson(github.event.issue.labels.*.name) }}'
+          MODEL="claude-3-5-sonnet-20241022"
+          if echo "$LABELS" | grep -q "model:opus"; then
+            MODEL="claude-3-opus-20240229"
+          elif echo "$LABELS" | grep -q "model:sonnet-3.7"; then
+            MODEL="claude-3-7-sonnet-20250219"
+          elif echo "$LABELS" | grep -q "model:haiku"; then
+            MODEL="claude-3-5-haiku-20241022"
+          fi
+          echo "selected_model=$MODEL" >> $GITHUB_OUTPUT
+          echo "Selected model: $MODEL"
+
+      - name: Create Isolated Feature Branch
+        if: steps.check-secrets.outputs.has_secret == 'true'
+        id: setup-branch
+        run: |
+          ISSUE_NUM="${{ github.event.issue.number }}"
+          BRANCH_NAME="ai/claude-issue-${ISSUE_NUM}-$(date +%s)"
+          git config user.name "Claude Code [AI Contributor]"
+          git config user.email "claude-agent@users.noreply.github.com"
+          git checkout -b "$BRANCH_NAME"
+          echo "branch_name=$BRANCH_NAME" >> $GITHUB_OUTPUT
+
+      - name: Run Claude Code Action
+        if: steps.check-secrets.outputs.has_secret == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          claude_args: |
+            --model ${{ steps.resolve-model.outputs.selected_model }}
+            --max-turns 20
+            --allowedTools "Bash(pytest *),Bash(npm test),Bash(git *),Read,Edit,Write"

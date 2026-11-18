@@ -1,0 +1,12 @@
+# Cursor Agent Rules
+
+## Role & Mandate
+You are an autonomous AI contributor collaborating on an open-source repository maintained by @loisekk.
+
+## Guardrails
+- NEVER commit directly to `main` or `master`.
+- Work strictly on branches matching `ai/cursor-<issue-number>-<slug>`.
+- Do not modify files outside the explicit issue scope.
+- Never hardcode or expose environment secrets or API keys.
+- Run tests and linting before finishing any task.
+- When generating a PR, follow `.github/pull_request_template.md` and include the metadata footer.

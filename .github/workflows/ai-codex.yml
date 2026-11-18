@@ -1,0 +1,102 @@
+name: AI Contributor — OpenAI Codex
+
+on:
+  issues:
+    types: [labeled]
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  dispatch-codex:
+    if: |
+      (github.event_name == 'issues' && github.event.label.name == 'agent:codex') ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@codex'))
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Verify Collaborator Authorization
+        id: auth-check
+        run: |
+          AUTHOR="${{ github.event.sender.login }}"
+          ASSOCIATION="${{ github.event.comment.author_association || github.event.issue.author_association }}"
+          echo "Triggered by $AUTHOR with association $ASSOCIATION"
+          if [[ "$ASSOCIATION" != "OWNER" && "$ASSOCIATION" != "MEMBER" && "$ASSOCIATION" != "COLLABORATOR" ]]; then
+            echo "::error::Unauthorized execution attempt by non-collaborator: $AUTHOR"
+            exit 1
+          fi
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Inspect Credentials Availability
+        id: check-secrets
+        run: |
+          if [ -z "${{ secrets.OPENAI_API_KEY }}" ]; then
+            echo "has_secret=false" >> $GITHUB_OUTPUT
+            echo "::warning::OPENAI_API_KEY is not configured in repository secrets."
+          else
+            echo "has_secret=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Post Advisory Comment if Credentials Missing
+        if: steps.check-secrets.outputs.has_secret == 'false'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issueNumber = context.issue.number;
+            const message = `### ⚠️ AI Contributor Standby: OpenAI Codex
+            Codex was triggered on issue #${issueNumber}, but **OpenAI credentials are not yet configured in repository secrets** (\`OPENAI_API_KEY\`).
+            
+            **Cost Guardrail Active:**
+            1. No billing has been triggered.
+            2. When promotional developer credits or approved API keys are ready, add \`OPENAI_API_KEY\` to repository secrets.
+            3. Once added, re-apply the \`agent:codex\` label or comment \`@codex retry\`.`;
+            
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              body: message
+            });
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: issueNumber,
+              labels: ['status:credentials-needed']
+            });
+
+      - name: Resolve Requested Model
+        if: steps.check-secrets.outputs.has_secret == 'true'
+        id: resolve-model
+        run: |
+          LABELS='${{ toJson(github.event.issue.labels.*.name) }}'
+          MODEL="gpt-4o"
+          if echo "$LABELS" | grep -q "model:o3-mini"; then
+            MODEL="o3-mini"
+          elif echo "$LABELS" | grep -q "model:o1"; then
+            MODEL="o1"
+          fi
+          echo "selected_model=$MODEL" >> $GITHUB_OUTPUT
+          echo "Selected model: $MODEL"
+
+      - name: Run Codex Action
+        if: steps.check-secrets.outputs.has_secret == 'true'
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          model: ${{ steps.resolve-model.outputs.selected_model }}
+          prompt: |
+            Implement the requirements specified in GitHub Issue #${{ github.event.issue.number }}:
+            Title: ${{ github.event.issue.title }}
+            Body:
+            ${{ github.event.issue.body }}
+            
+            Strictly follow repository guidelines in CODEX.md and CONTRIBUTING_AI.md.
+            Verify tests pass before concluding.
